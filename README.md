@@ -118,10 +118,14 @@ headword more than once nearby; P/R at confidence 0.5, lenient):
 | core (structural) | 0.696 | 0.741 | 0.857 | 0.81 / 0.80 |
 | core + chiVe (tier 1) | 0.733 | 0.767 | 0.871 | 0.83 / 0.86 |
 | + multilingual-e5-small (CPU preview of tier 2) | 0.706 | 0.754 | 0.863 | 0.83 / 0.86 |
+| + within-sense relative similarities | 0.686 | 0.761 | 0.865 | 0.87 / 0.89 |
 
-The e5-small cosines add nothing (the tree model barely uses them and the
-differences are within the noise of 303 senses), so the tier-2 gain, if any,
-has to come from a stronger Japanese model, the reranker or the judge.
+Embedding cosines sit in a narrow band (e5-small: 0.85 to 0.88), so the raw
+values were ignored by the tree model; expressed relative to the best
+candidate of the same sense (`rel_*` columns, added in `score.py`) the e5
+category similarity becomes the most used feature and the many-to-many
+precision/recall at 0.5 rises to 0.87/0.89 (0.92/0.82 at 0.7). Top-1 is
+unchanged within the noise of 303 senses.
 
 Links are scored pair by pair without candidate-count priors, and dev
 candidates in the same group as the gold are left unlabelled rather than

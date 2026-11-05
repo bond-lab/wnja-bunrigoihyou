@@ -81,6 +81,10 @@ def add_derived(df: pl.DataFrame) -> pl.DataFrame:
             cols.append((pl.col(c) > 0).cast(pl.Int8).alias(f"any_{c[3:]}"))
         elif c.startswith("size_"):
             cols.append(pl.col(c).log1p().alias(f"log_{c}"))
+        elif c.startswith(("chive_", "sent_")) and c != "chive_has":
+            # similarity relative to the best candidate of the same sense: embedding
+            # cosines sit in a narrow band, so the within-sense difference carries the signal
+            cols.append((pl.col(c) - pl.col(c).max().over("sense_id")).alias(f"rel_{c}"))
     return df.with_columns(cols)
 
 
