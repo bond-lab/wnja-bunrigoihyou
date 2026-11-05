@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Downloaded data (CC BY-NC-SA, cloned from github.com/masayu-a)
+data/
+
+# wn database built from wnja (large)
+.wn_data/
+
+# Build outputs
+build/
+
+# Editor backups
+*~
+.~lock.*

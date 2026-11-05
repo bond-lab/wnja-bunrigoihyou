@@ -1,0 +1,17 @@
+[project]
+name = "wnja-bunrigoihyou"
+version = "0.1.0"
+description = "Mapping Japanese WordNet senses to 分類語彙表 (WLSP) senses"
+requires-python = ">=3.10"
+dependencies = [
+    "wn>=1.1",
+]
+
+[tool.ruff]
+line-length = 100
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
+]
