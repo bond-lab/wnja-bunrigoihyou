@@ -78,6 +78,40 @@ therefore candidates for adding TUFS senses to wnja.
 
 A further 343 Japanese TUFS entries have a WLSP record but no synset link.
 
+## Mapping pipeline
+
+Each step adds columns to one candidate table in `build/` (gitignored), so the
+tiers can run on different machines and the table can be copied between them.
+
+```bash
+# core (laptop): candidate pairs with structural features, then score and evaluate
+uv run scripts/candidates.py                    # -> build/candidates.parquet
+uv run scripts/score.py                         # -> wnja-wlsp.tsv, build/scored.parquet, build/review.tsv
+uv run scripts/evaluate.py --name core          # -> dev/eval.md
+
+# tier 1 (laptop): chiVe word-vector similarity features
+curl -o build/chive/chive-1.3-mc30_gensim.tar.gz \
+  https://sudachi.s3-ap-northeast-1.amazonaws.com/chive/chive-1.3-mc30_gensim.tar.gz
+tar xzf build/chive/chive-1.3-mc30_gensim.tar.gz -C build/chive
+uv run scripts/features_chive.py                # adds chive_* columns in place
+uv run scripts/score.py && uv run scripts/evaluate.py --name chive
+```
+
+`candidates.py` pairs every wnja sense with the WLSP senses (見出し番号) whose
+written form matches the word's lemma or a form, falling back to the reading
+for kana words, and records how the synset's neighbourhood (members,
+hypernyms, hyponyms, co-hyponyms, similar and antonym synsets, hierarchy via
+ILI into omw-en 1.4) overlaps the candidate's 小段落, 段落, 分類項目 and 中項目.
+`score.py` fits a logistic regression on the dev-set labels (gold pair against
+the other candidates of the same sense) with grouped cross-validation, and
+writes `wnja-wlsp.tsv` with one row per link: wnja sense, synset, ILI, lemma,
+WLSP 見出し番号, record, code, labels, `confidence` and an `evidence` summary.
+Links are many-to-many: every pair above the threshold is kept.
+
+Later tiers (GPU sentence embeddings and a Claude judge for uncertain pairs;
+岩波国語辞典 definitions through `wlsp2iwanami` where available) add further
+columns the same way.
+
 ## Development
 
 ```bash

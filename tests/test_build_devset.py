@@ -5,7 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from build_devset import hira_to_kata, normalise_midashi, polite_form
+from build_devset import polite_form
+from wlsp import hira_to_kata, normalise_midashi
 
 
 def test_normalise_strips_reading_hint() -> None:

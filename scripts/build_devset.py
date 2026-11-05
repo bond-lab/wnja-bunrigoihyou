@@ -20,61 +20,17 @@ import argparse
 import csv
 import logging
 import re
+import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
 import wn
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from wlsp import WlspEntry, hira_to_kata, read_wlsp
+
 logger = logging.getLogger(__name__)
-
-# Columns of bunruidb.txt (see kaisetsu.txt in the WLSP distribution).
-WLSP_FIELDS = (
-    "record_id",
-    "midashi_no",
-    "record_type",
-    "rui",
-    "bumon",
-    "chukoumoku",
-    "bunrui_koumoku",
-    "bunrui_no",
-    "danraku",
-    "shodanraku",
-    "go_no",
-    "midashi",
-    "midashi_hontai",
-    "yomi",
-    "gyakuyomi",
-)
-
-_BRACKETS = re.compile(r"（[^）]*）|\[[^\]]*\]|［[^］]*］|〔[^〕]*〕")
-
-
-@dataclass(frozen=True)
-class WlspEntry:
-    """One record of the WLSP database (a sense of a headword)."""
-
-    record_id: str
-    midashi_no: str
-    record_type: str
-    bunrui_no: str
-    danraku: str
-    shodanraku: str
-    go_no: str
-    midashi: str
-    midashi_hontai: str
-    yomi: str
-    labels: str
-
-    @property
-    def code(self) -> str:
-        """Full WLSP position code, e.g. ``2.3520-01-01-02``."""
-        return f"{self.bunrui_no}-{self.danraku}-{self.shodanraku}-{self.go_no}"
-
-    @property
-    def lemma(self) -> str:
-        """Headword with reading hints and usage notes stripped."""
-        return normalise_midashi(self.midashi_hontai)
 
 
 @dataclass(frozen=True)
@@ -85,18 +41,6 @@ class TufsEntry:
     lemma: str
     yomi: str
     english: str
-
-
-def normalise_midashi(midashi: str) -> str:
-    """Strip reading hints and usage notes from a WLSP headword.
-
-    Args:
-        midashi: Headword as given in WLSP, e.g. ``行（い）く`` or ``浴びる［一風呂〜］``
-
-    Returns:
-        The bare headword, e.g. ``行く`` or ``浴びる``
-    """
-    return _BRACKETS.sub("", midashi).strip()
 
 
 _INDEX = re.compile(r"\(\d+\)$")
@@ -117,49 +61,6 @@ def polite_form(tufs_form: str) -> str:
     """
     form = _INDEX.sub("", tufs_form.split(";")[0].strip())
     return form if form.endswith("ます") else ""
-
-
-def hira_to_kata(text: str) -> str:
-    """Convert hiragana to katakana, leaving other characters unchanged.
-
-    Args:
-        text: Any string
-
-    Returns:
-        The string with hiragana (U+3041 to U+3096) shifted to katakana
-    """
-    return "".join(chr(ord(c) + 0x60) if "ぁ" <= c <= "ゖ" else c for c in text)
-
-
-def read_wlsp(path: Path) -> dict[str, WlspEntry]:
-    """Read the WLSP database (Shift_JIS CSV) keyed by record ID.
-
-    Args:
-        path: Path to ``bunruidb.txt``
-
-    Returns:
-        Mapping from zero-padded record ID to entry
-    """
-    entries: dict[str, WlspEntry] = {}
-    with path.open(encoding="shift_jis", newline="") as fh:
-        for row in csv.reader(fh):
-            rec = dict(zip(WLSP_FIELDS, row, strict=True))
-            entries[rec["record_id"]] = WlspEntry(
-                record_id=rec["record_id"],
-                midashi_no=rec["midashi_no"],
-                record_type=rec["record_type"],
-                bunrui_no=rec["bunrui_no"],
-                danraku=rec["danraku"],
-                shodanraku=rec["shodanraku"],
-                go_no=rec["go_no"],
-                midashi=rec["midashi"],
-                midashi_hontai=rec["midashi_hontai"],
-                yomi=rec["yomi"],
-                labels="/".join(
-                    (rec["rui"], rec["bumon"], rec["chukoumoku"], rec["bunrui_koumoku"])
-                ),
-            )
-    return entries
 
 
 def _yomi_from_comment(comment: str) -> str:

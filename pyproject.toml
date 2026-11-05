@@ -4,6 +4,12 @@ version = "0.1.0"
 description = "Mapping Japanese WordNet senses to 分類語彙表 (WLSP) senses"
 requires-python = ">=3.10"
 dependencies = [
+    "gensim>=4.4.0",
+    "numpy>=2.2.6",
+    "polars>=2.0.0",
+    "scikit-learn>=1.7.2",
+    "sudachidict-core>=20261015",
+    "sudachipy>=0.7.0",
     "wn>=1.1",
 ]
 
