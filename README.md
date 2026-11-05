@@ -146,8 +146,34 @@ test. `--tufs-gloss ../tufs/tufs-vocab.tsv` adds TUFS English glosses to the
 ~800 WLSP records that are TUFS concepts; those are the dev set, so only use
 it for the final mapping, never for evaluation.
 
-A Claude judge for uncertain pairs and 岩波国語辞典 definitions through
-`wlsp2iwanami` (tier 3) add further columns the same way.
+### Tier 2b: Claude as judge for uncertain words
+
+```bash
+uv sync --extra judge                    # anthropic SDK; needs ANTHROPIC_API_KEY
+uv run scripts/judge_claude.py --dry-run             # prompts + size estimate, no API calls
+uv run scripts/judge_claude.py --sync --max-words 20 # small direct run to check output
+uv run scripts/judge_claude.py --submit              # Message Batches (half price)
+uv run scripts/judge_claude.py --collect             # later: fetch finished batches
+uv run scripts/judge_claude.py --apply               # judge_* columns -> candidates.parquet
+uv run scripts/score.py && uv run scripts/evaluate.py --name judge
+```
+
+Words are selected when a pair's confidence falls in the uncertain band
+(0.3 to 0.7) or a sense's top two candidates are within 0.15. One prompt per
+word lists all its wnja senses and all its WLSP senses (code, labels, 小段落
+and 段落 neighbours, and the 岩波国語辞典 definition when
+`build/iwanami_defs.tsv` exists, see tier 3) and asks for the links that
+hold, each with a relation (same, narrower, broader, related) and a
+confidence, as JSON via structured outputs. Verdicts are cached in
+`build/judge.jsonl`. Default model `claude-sonnet-5-5` at medium effort;
+`--model claude-opus-5-5` for a stronger judge.
+
+### Tier 3: 岩波国語辞典 definitions (TUAT)
+
+`data/wlsp2iwanami` links 60k WLSP records to Iwanami sense IDs. On a machine
+with the 岩波国語辞典第五版タグ付きコーパス, write `build/iwanami_defs.tsv`
+(`senseid<TAB>definition`, UTF-8); the judge picks it up automatically and a
+definition-to-definition embedding feature can be added in `features_sent.py`.
 
 ## Development
 

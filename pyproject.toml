@@ -19,6 +19,9 @@ sent = [
     "sentence-transformers>=3.3",
     "torch>=2.4",
 ]
+judge = [
+    "anthropic>=1.0",
+]
 
 [tool.uv]
 # On Linux, take the CPU-only torch wheels instead of the multi-gigabyte CUDA build.
