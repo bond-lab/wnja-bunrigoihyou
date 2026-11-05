@@ -117,6 +117,11 @@ headword more than once nearby; P/R at confidence 0.5, lenient):
 | hand-weighted baseline | 0.627 | 0.725 | 0.843 | |
 | core (structural) | 0.696 | 0.741 | 0.857 | 0.81 / 0.80 |
 | core + chiVe (tier 1) | 0.733 | 0.767 | 0.871 | 0.83 / 0.86 |
+| + multilingual-e5-small (CPU preview of tier 2) | 0.706 | 0.754 | 0.863 | 0.83 / 0.86 |
+
+The e5-small cosines add nothing (the tree model barely uses them and the
+differences are within the noise of 303 senses), so the tier-2 gain, if any,
+has to come from a stronger Japanese model, the reranker or the judge.
 
 Links are scored pair by pair without candidate-count priors, and dev
 candidates in the same group as the gold are left unlabelled rather than
