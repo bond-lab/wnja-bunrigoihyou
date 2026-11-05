@@ -124,9 +124,30 @@ treated as negatives, so genuine many-to-many links are not penalised. Note
 the dev set itself has almost no wnja-sense-to-several-records links (a TUFS
 concept is one WLSP record), so that direction is unmeasured.
 
-Later tiers (GPU sentence embeddings and a Claude judge for uncertain pairs;
-岩波国語辞典 definitions through `wlsp2iwanami` where available) add further
-columns the same way.
+### Tier 2: sentence embeddings (GPU or Apple silicon)
+
+```bash
+uv sync --extra sent                              # torch + sentence-transformers
+# copy build/candidates.parquet from the laptop, then, per model:
+uv run scripts/features_sent.py --model BAAI/bge-m3 --device mps
+uv run scripts/features_sent.py --model intfloat/multilingual-e5-small \
+    --query-prefix "query: " --doc-prefix "passage: "
+uv run scripts/score.py && uv run scripts/evaluate.py --name bge-m3
+```
+
+`features_sent.py` embeds each synset (members, Japanese definition,
+examples; `--en-gloss` appends the omw-en definition) and three texts per
+WLSP sense: the category path with the English 中項目 name from the TUFS
+`bunrui_names.tsv` (`cat`), the headword with its 小段落 neighbours (`sub`),
+and the path with 小段落 and 段落 neighbours (`ctx`). The cosines become
+`sent_<model>_cat/sub/ctx`, so several models can be compared in one table.
+Embeddings are cached in `build/emb/<model>/`. `--max-texts 300` is a smoke
+test. `--tufs-gloss ../tufs/tufs-vocab.tsv` adds TUFS English glosses to the
+~800 WLSP records that are TUFS concepts; those are the dev set, so only use
+it for the final mapping, never for evaluation.
+
+A Claude judge for uncertain pairs and 岩波国語辞典 definitions through
+`wlsp2iwanami` (tier 3) add further columns the same way.
 
 ## Development
 

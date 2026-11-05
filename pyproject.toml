@@ -13,6 +13,23 @@ dependencies = [
     "wn>=1.1",
 ]
 
+[project.optional-dependencies]
+# tier 2: sentence embeddings (run on a GPU or Apple-silicon machine; CPU works for smoke tests)
+sent = [
+    "sentence-transformers>=3.3",
+    "torch>=2.4",
+]
+
+[tool.uv]
+# On Linux, take the CPU-only torch wheels instead of the multi-gigabyte CUDA build.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
 [tool.ruff]
 line-length = 100
 
