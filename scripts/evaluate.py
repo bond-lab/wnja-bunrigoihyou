@@ -133,7 +133,9 @@ def main() -> None:
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-    df = pl.read_parquet(args.scored).filter(pl.col("gold_rel").is_not_null())
+    dev = pl.read_parquet(args.scored).filter(pl.col("gold_rel").is_not_null())
+    decoys = dev.filter(pl.col("gold_rel") == "decoy")
+    df = dev.filter(pl.col("gold_rel") != "decoy")
     header = (
         "| run | ambiguous senses | top-1 | MRR | "
         + " | ".join(f"P/R/F1 @{t}" for t in args.thresholds)
@@ -148,6 +150,15 @@ def main() -> None:
             line = report_line(label, d, col, args.thresholds)
             lines.append(line)
             logger.info(line)
+
+    if len(decoys):
+        rejected = float((decoys["p_cv"] < args.thresholds[1]).mean())
+        line = (
+            f"| decoys rejected at {args.thresholds[1]} | {len(decoys)} | {rejected:.3f} | |"
+            + " |" * len(args.thresholds)
+        )
+        lines.append(line)
+        logger.info(line)
 
     new = not args.report.exists()
     with args.report.open("a", encoding="utf-8") as fh:

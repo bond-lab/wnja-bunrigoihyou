@@ -33,6 +33,7 @@ import csv
 import hashlib
 import json
 import logging
+import random
 import sys
 import time
 from collections import defaultdict
@@ -149,14 +150,28 @@ def read_iwanami(defs_path: Path, map_path: Path) -> dict[str, list[str]]:
     return dict(out)
 
 
-def select_words(df: pl.DataFrame, low: float, high: float, margin: float) -> list[str]:
-    """Words with an uncertain pair or a close top-2 decision.
+def select_words(
+    df: pl.DataFrame,
+    low: float,
+    high: float,
+    margin: float,
+    single_sample: int = 0,
+    seed: int = 0,
+) -> list[str]:
+    """Words with an uncertain pair or a close top-2 decision, plus a sample of lone links.
+
+    Words whose every wnja sense has exactly one WLSP candidate always score
+    high, because the dev set holds no negatives of that kind; a random sample
+    of them lets the judge estimate how often such lone links are wrong and
+    supplies labels the scorer lacks.
 
     Args:
         df: Scored candidate table (needs ``p``)
         low: Lower end of the uncertain band
         high: Upper end of the uncertain band
         margin: Top-2 probability gap below which a sense counts as undecided
+        single_sample: Number of single-candidate words to add at random
+        seed: Random seed for that sample
 
     Returns:
         Sorted list of lemmas
@@ -170,7 +185,17 @@ def select_words(df: pl.DataFrame, low: float, high: float, margin: float) -> li
         .agg(pl.col("p").max() - pl.col("p").min(), pl.len().alias("n"), pl.col("lemma").first())
         .filter((pl.col("n") == 2) & (pl.col("p") < margin))["lemma"]
     )
-    return sorted(set(band.to_list()) | set(ranked.to_list()))
+    chosen = set(band.to_list()) | set(ranked.to_list())
+    if single_sample:
+        lone = (
+            df.group_by("lemma")
+            .agg(pl.col("n_cands").max().alias("m"))
+            .filter(pl.col("m") == 1)["lemma"]
+            .to_list()
+        )
+        rng = random.Random(seed)
+        chosen |= set(rng.sample(lone, min(single_sample, len(lone))))
+    return sorted(chosen)
 
 
 def build_cases(
@@ -499,6 +524,12 @@ def main() -> None:
     ap.add_argument("--high", type=float, default=0.7)
     ap.add_argument("--margin", type=float, default=0.15)
     ap.add_argument("--max-words", type=int, default=0, help="limit the number of words (0 = all)")
+    ap.add_argument(
+        "--single-sample",
+        type=int,
+        default=0,
+        help="also judge this many random words whose senses have a single candidate",
+    )
     ap.add_argument("--batch-size", type=int, default=5000)
     ap.add_argument("--en-gloss", action="store_true", help="add omw-en definitions to synsets")
     ap.add_argument("--en-lexicon", default="omw-en:1.4")
@@ -520,7 +551,7 @@ def main() -> None:
     ja = wn.Wordnet(lexicon=args.lexicon)
     db = Wlsp.load(args.wlsp)
     df = pl.read_parquet(args.scored)
-    words = select_words(df, args.low, args.high, args.margin)
+    words = select_words(df, args.low, args.high, args.margin, args.single_sample)
     if args.max_words:
         words = words[: args.max_words]
     en_gloss: dict[str, str] = {}

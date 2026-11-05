@@ -119,6 +119,7 @@ headword more than once nearby; P/R at confidence 0.5, lenient):
 | core + chiVe (tier 1) | 0.733 | 0.767 | 0.871 | 0.83 / 0.86 |
 | + multilingual-e5-small (CPU preview of tier 2) | 0.706 | 0.754 | 0.863 | 0.83 / 0.86 |
 | + within-sense relative similarities | 0.686 | 0.761 | 0.865 | 0.87 / 0.89 |
+| + decoy negatives, trained on all dev senses | 0.683 | 0.734 | 0.852 | 0.88 / 0.85 |
 
 Embedding cosines sit in a narrow band (e5-small: 0.85 to 0.88), so the raw
 values were ignored by the tree model; expressed relative to the best
@@ -132,6 +133,18 @@ candidates in the same group as the gold are left unlabelled rather than
 treated as negatives, so genuine many-to-many links are not penalised. Note
 the dev set itself has almost no wnja-sense-to-several-records links (a TUFS
 concept is one WLSP record), so that direction is unmeasured.
+
+**Lone candidates are unverified.** 60k of the 168k pairs are the only WLSP
+candidate of their wnja sense, and the dev set has no negatives of that kind
+(every dev word was linked), so the scorer cannot learn to reject a lone
+candidate: they all come out above 0.5. `candidates.py` adds two decoy
+negatives per dev sense (WLSP senses of other words in the same 類 but a
+different 分類項目, `gold_rel` = `decoy`); the scorer rejects 99.9% of them,
+which shows it recognises unrelated contexts, but a lone candidate that is
+the same word in a different sense is a harder case the dev set does not
+contain. The output keeps `n_cands` so lone links can be filtered, and
+`judge_claude.py --single-sample N` sends a random sample of them to the
+judge to measure how often they are wrong and to supply the missing labels.
 
 ### Tier 2: sentence embeddings (GPU or Apple silicon)
 
@@ -168,7 +181,8 @@ uv run scripts/score.py && uv run scripts/evaluate.py --name judge
 ```
 
 Words are selected when a pair's confidence falls in the uncertain band
-(0.3 to 0.7) or a sense's top two candidates are within 0.15. One prompt per
+(0.3 to 0.7) or a sense's top two candidates are within 0.15, plus
+`--single-sample N` random lone-candidate words. One prompt per
 word lists all its wnja senses and all its WLSP senses (code, labels, 小段落
 and 段落 neighbours, and the 岩波国語辞典 definition when
 `build/iwanami_defs.tsv` exists, see tier 3) and asks for the links that

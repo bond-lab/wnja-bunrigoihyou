@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import csv
 import logging
+import random
 import sys
 import time
 from collections import defaultdict
@@ -289,7 +290,54 @@ def reading_match(word: wn.Word, mid: str, db: Wlsp) -> int | None:
     return int(bool(kana & db.readings[mid]))
 
 
-def build(ja: wn.Wordnet, en: wn.Wordnet, db: Wlsp, gold: dict[str, set[str]]) -> pl.DataFrame:
+def pick_decoys(
+    word_forms_: set[str],
+    taken: set[str],
+    pos: str,
+    db: Wlsp,
+    k: int,
+    rng: random.Random,
+) -> list[str]:
+    """Choose WLSP senses of other words to serve as negatives for a dev sense.
+
+    The dev set has no negatives for words with a single WLSP sense, so a
+    scorer trained on it only learns to rank candidates of the same word and
+    accepts any lone candidate.  Decoys are WLSP senses of the same 類 as the
+    word's part of speech, from a 分類項目 none of the word's real candidates
+    occupy, with a different headword.
+
+    Args:
+        word_forms_: Folded forms of the word (excluded as decoy headwords)
+        taken: 分類項目 keys of the word's real candidates
+        pos: Wordnet part of speech of the sense
+        db: The indexed WLSP database
+        k: Number of decoys wanted
+        rng: Random source (seeded for reproducibility)
+
+    Returns:
+        Up to ``k`` 見出し番号s
+    """
+    out: list[str] = []
+    mids = db.by_pos.get(pos, [])
+    for _ in range(50 * k):
+        if len(out) >= k or not mids:
+            break
+        mid = mids[rng.randrange(len(mids))]
+        rec = db.senses[mid]
+        if rec.item_key in taken or db.forms[mid] & word_forms_ or mid in out:
+            continue
+        out.append(mid)
+    return out
+
+
+def build(
+    ja: wn.Wordnet,
+    en: wn.Wordnet,
+    db: Wlsp,
+    gold: dict[str, set[str]],
+    decoys: int = 2,
+    seed: int = 0,
+) -> pl.DataFrame:
     """Build the candidate table.
 
     Args:
@@ -297,10 +345,13 @@ def build(ja: wn.Wordnet, en: wn.Wordnet, db: Wlsp, gold: dict[str, set[str]]) -
         en: The English wordnet sharing ILIs with it
         db: The indexed WLSP database
         gold: Gold 見出し番号s per wnja sense (dev set)
+        decoys: Decoy negatives to add per dev sense (``gold_rel`` = ``decoy``)
+        seed: Random seed for decoy selection
 
     Returns:
-        One row per (wnja sense, WLSP sense) candidate pair
+        One row per (wnja sense, WLSP sense) candidate pair, plus decoy rows
     """
+    rng = random.Random(seed)
     t0 = time.time()
     contexts = synset_contexts(ja, en)
     logger.info("synset contexts for %d synsets in %.0fs", len(contexts), time.time() - t0)
@@ -314,11 +365,20 @@ def build(ja: wn.Wordnet, en: wn.Wordnet, db: Wlsp, gold: dict[str, set[str]]) -
         n_matched += 1
         own = word_forms(word)
         senses = word.senses()
+        taken = {db.senses[m].item_key for m in cands}
         for i, sense in enumerate(senses):
             ss = sense.synset()
             ctx = contexts[ss.id]
-            for mid, how in cands.items():
+            pairs = dict(cands)
+            if sense.id in gold and decoys:
+                for mid in pick_decoys(own, taken, ss.pos, db, decoys, rng):
+                    pairs[mid] = "decoy"
+            for mid, how in pairs.items():
                 rec = db.senses[mid]
+                is_decoy = how == "decoy"
+                if is_decoy:
+                    # look like a lexical match so the only tells are the pair features
+                    how = next(iter(cands.values()))
                 row: dict[str, object] = {
                     "sense_id": sense.id,
                     "synset_id": ss.id,
@@ -342,7 +402,10 @@ def build(ja: wn.Wordnet, en: wn.Wordnet, db: Wlsp, gold: dict[str, set[str]]) -
                 ym = reading_match(word, mid, db)
                 row["yomi_match"] = ym if ym is not None else 0
                 row["has_yomi"] = int(ym is not None)
-                if sense.id in gold:
+                if is_decoy:
+                    row["gold_rel"] = "decoy"
+                    row["gold"] = 0
+                elif sense.id in gold:
                     rel = gold_relation(mid, gold[sense.id], db)
                     row["gold_rel"] = rel
                     row["gold"] = {"exact": 1, "other": 0}.get(rel)
@@ -368,6 +431,7 @@ def main() -> None:
     ap.add_argument("--lexicon", default="wnja:2.1")
     ap.add_argument("--en-lexicon", default="omw-en:1.4")
     ap.add_argument("--dev", type=Path, default=Path("dev/devset.tsv"))
+    ap.add_argument("--decoys", type=int, default=2, help="decoy negatives per dev sense")
     ap.add_argument("-o", "--output", type=Path, default=Path("build/candidates.parquet"))
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -378,7 +442,7 @@ def main() -> None:
     db = Wlsp.load(args.wlsp)
     gold = read_gold(args.dev) if args.dev.exists() else {}
 
-    df = build(ja, en, db, gold)
+    df = build(ja, en, db, gold, decoys=args.decoys)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     df.write_parquet(args.output)
     labelled = df.filter(pl.col("gold").is_not_null())

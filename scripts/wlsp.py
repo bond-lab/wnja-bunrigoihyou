@@ -189,6 +189,7 @@ class Wlsp:
         readings: Readings per 見出し番号
         by_form: 見出し番号s per folded written form
         by_yomi: 見出し番号s per reading
+        by_pos: 見出し番号s per wordnet part of speech (from the 類 digit)
         groups: For each level (``subpara``, ``para``, ``item``, ``middle``),
             the 見出し番号s in each group key
     """
@@ -199,6 +200,7 @@ class Wlsp:
     readings: dict[str, set[str]] = field(default_factory=dict)
     by_form: dict[str, list[str]] = field(default_factory=dict)
     by_yomi: dict[str, list[str]] = field(default_factory=dict)
+    by_pos: dict[str, list[str]] = field(default_factory=dict)
     groups: dict[str, dict[object, list[str]]] = field(default_factory=dict)
 
     @classmethod
@@ -223,6 +225,7 @@ class Wlsp:
         db.readings = dict(readings)
         by_form: dict[str, list[str]] = defaultdict(list)
         by_yomi: dict[str, list[str]] = defaultdict(list)
+        by_pos: dict[str, list[str]] = defaultdict(list)
         groups: dict[str, dict[object, list[str]]] = {
             level: defaultdict(list) for level in ("subpara", "para", "item", "middle")
         }
@@ -231,12 +234,14 @@ class Wlsp:
                 by_form[f].append(mid)
             for y in db.readings[mid]:
                 by_yomi[y].append(mid)
+            by_pos[rec.pos].append(mid)
             groups["subpara"][rec.subpara_key].append(mid)
             groups["para"][rec.para_key].append(mid)
             groups["item"][rec.item_key].append(mid)
             groups["middle"][rec.middle_key].append(mid)
         db.by_form = dict(by_form)
         db.by_yomi = dict(by_yomi)
+        db.by_pos = dict(by_pos)
         db.groups = {level: dict(g) for level, g in groups.items()}
         return db
 

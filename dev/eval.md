@@ -59,3 +59,51 @@
 | chive+e5small+rel strict | 303 | 0.686 | 0.826 | 0.73/0.93/0.82 | 0.76/0.89/0.82 | 0.81/0.82/0.82 |
 | baseline lenient | 305 | 0.725 | 0.843 | | | |
 | chive+e5small+rel lenient | 305 | 0.761 | 0.865 | 0.83/0.93/0.88 | 0.87/0.89/0.88 | 0.92/0.82/0.87 |
+
+## 2026-11-05 chive+e5+rel,ambiguous-only
+
+| run | ambiguous senses | top-1 | MRR | P/R/F1 @0.3 | P/R/F1 @0.5 | P/R/F1 @0.7 |
+|---|---|---|---|---|---|---|
+| baseline strict | 303 | 0.627 | 0.791 | | | |
+| chive+e5+rel,ambiguous-only strict | 303 | 0.686 | 0.826 | 0.73/0.93/0.82 | 0.76/0.89/0.82 | 0.81/0.82/0.82 |
+| baseline lenient | 305 | 0.725 | 0.843 | | | |
+| chive+e5+rel,ambiguous-only lenient | 305 | 0.761 | 0.865 | 0.83/0.93/0.88 | 0.87/0.89/0.88 | 0.92/0.82/0.87 |
+
+## 2026-11-05 chive+e5+rel,ambiguous-only
+
+| run | ambiguous senses | top-1 | MRR | P/R/F1 @0.3 | P/R/F1 @0.5 | P/R/F1 @0.7 |
+|---|---|---|---|---|---|---|
+| baseline strict | 303 | 0.627 | 0.791 | | | |
+| chive+e5+rel,ambiguous-only strict | 303 | 0.693 | 0.829 | 0.73/0.92/0.81 | 0.77/0.87/0.82 | 0.82/0.79/0.81 |
+| baseline lenient | 305 | 0.725 | 0.843 | | | |
+| chive+e5+rel,ambiguous-only lenient | 305 | 0.757 | 0.863 | 0.83/0.92/0.87 | 0.88/0.87/0.87 | 0.92/0.79/0.85 |
+
+## 2026-11-05 chive+e5+rel+decoys
+
+| run | ambiguous senses | top-1 | MRR | P/R/F1 @0.3 | P/R/F1 @0.5 | P/R/F1 @0.7 |
+|---|---|---|---|---|---|---|
+| baseline strict | 303 | 0.627 | 0.791 | | | |
+| chive+e5+rel+decoys strict | 303 | 0.680 | 0.823 | 0.73/0.92/0.82 | 0.76/0.86/0.81 | 0.81/0.79/0.80 |
+| baseline lenient | 305 | 0.725 | 0.843 | | | |
+| chive+e5+rel+decoys lenient | 305 | 0.754 | 0.862 | 0.84/0.92/0.88 | 0.87/0.86/0.87 | 0.92/0.79/0.85 |
+| decoys rejected at 0.5 | 1188 | 0.513 | | | | |
+
+## 2026-11-05 chive+e5+rel+decoys,train-all
+
+| run | ambiguous senses | top-1 | MRR | P/R/F1 @0.3 | P/R/F1 @0.5 | P/R/F1 @0.7 |
+|---|---|---|---|---|---|---|
+| baseline strict | 303 | 0.627 | 0.791 | | | |
+| chive+e5+rel+decoys,train-all strict | 303 | 0.683 | 0.824 | 0.74/0.91/0.81 | 0.76/0.85/0.80 | 0.81/0.80/0.80 |
+| baseline lenient | 305 | 0.725 | 0.843 | | | |
+| chive+e5+rel+decoys,train-all lenient | 305 | 0.734 | 0.852 | 0.84/0.91/0.88 | 0.88/0.85/0.86 | 0.92/0.80/0.85 |
+| decoys rejected at 0.5 | 1188 | 0.999 | | | | |
+
+## 2026-11-05 laptop-final
+
+| run | ambiguous senses | top-1 | MRR | P/R/F1 @0.3 | P/R/F1 @0.5 | P/R/F1 @0.7 |
+|---|---|---|---|---|---|---|
+| baseline strict | 303 | 0.627 | 0.791 | | | |
+| laptop-final strict | 303 | 0.683 | 0.824 | 0.74/0.91/0.81 | 0.76/0.85/0.80 | 0.81/0.80/0.80 |
+| baseline lenient | 305 | 0.725 | 0.843 | | | |
+| laptop-final lenient | 305 | 0.734 | 0.852 | 0.84/0.91/0.88 | 0.88/0.85/0.86 | 0.92/0.80/0.85 |
+| decoys rejected at 0.5 | 1188 | 0.999 | | | | |

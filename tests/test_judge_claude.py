@@ -98,3 +98,17 @@ def test_read_iwanami(tmp_path: Path) -> None:
     )
     assert read_iwanami(defs, mapping) == {"090962": ["ある状態に近いさま。"]}
     assert read_iwanami(tmp_path / "missing.tsv", mapping) == {}
+
+
+def test_select_words_single_sample() -> None:
+    df = pl.DataFrame(
+        {
+            "lemma": ["a", "a", "b", "c", "d"],
+            "sense_id": ["a1", "a1", "b1", "c1", "d1"],
+            "n_cands": [2, 2, 1, 1, 1],
+            "p": [0.95, 0.1, 0.9, 0.9, 0.9],
+        }
+    )
+    assert select_words(df, 0.3, 0.7, 0.15) == []
+    picked = select_words(df, 0.3, 0.7, 0.15, single_sample=2, seed=0)
+    assert len(picked) == 2 and set(picked) <= {"b", "c", "d"}

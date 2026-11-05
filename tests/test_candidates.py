@@ -88,3 +88,18 @@ def test_gold_relation_and_reading_match(db: Wlsp) -> None:
     assert reading_match(FakeWord("会う", "v", ["会う", "アウ"]), "00002", db) == 1
     assert reading_match(FakeWord("会う", "v", ["会う", "カイ"]), "00002", db) == 0
     assert reading_match(FakeWord("会う", "v", ["会う"]), "00002", db) is None
+
+
+def test_pick_decoys_avoid_own_word_and_categories(db: Wlsp) -> None:
+    import random
+
+    from candidates import pick_decoys
+
+    # word 会う (v): its candidates occupy 2.1550 and 2.3520; only 会見する is left,
+    # which is in 2.3520, so no decoy is possible
+    assert pick_decoys({"会う"}, {"2.1550", "2.3520"}, "v", db, 2, random.Random(0)) == []
+    # with only 2.1550 taken, decoys must come from 2.3520 and not be 会う itself
+    decoys = pick_decoys({"会う"}, {"2.1550"}, "v", db, 2, random.Random(0))
+    assert decoys and all(db.senses[m].item_key == "2.3520" for m in decoys)
+    assert "00004" not in decoys  # 会う in 2.3520 has the word's own form
+    assert pick_decoys({"青"}, set(), "n", db, 1, random.Random(0)) == ["00006"]

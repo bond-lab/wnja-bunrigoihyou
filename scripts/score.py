@@ -172,7 +172,11 @@ def top_weights(model: Pipeline, features: list[str], n: int = 12) -> str:
 
 
 def fit_and_predict(
-    df: pl.DataFrame, features: list[str], kind: str = "gbt", folds: int = 5
+    df: pl.DataFrame,
+    features: list[str],
+    kind: str = "gbt",
+    folds: int = 5,
+    train_single: bool = True,
 ) -> pl.DataFrame:
     """Cross-validate on labelled rows, refit on all of them, predict every row.
 
@@ -181,17 +185,23 @@ def fit_and_predict(
         features: Feature column names
         kind: Model kind for ``make_model``
         folds: Number of GroupKFold folds (groups are senses)
+        train_single: Train on single-candidate dev senses too (their only
+            negatives are the decoys from ``candidates.py``)
 
     Returns:
         The table with ``p_cv`` (dev-set rows only) and ``p`` (all rows)
     """
     x_all = df.select(features).fill_null(0.0).to_numpy().astype(float)
     labelled = df["gold"].is_not_null().to_numpy()
+    if not train_single:
+        # without decoys, single-candidate dev senses are positive by construction and
+        # would only teach the model that "one candidate" means "link"
+        labelled &= (df["n_cands"] > 1).to_numpy()
     x = x_all[labelled]
-    y = df["gold"].drop_nulls().to_numpy()
-    groups = df.filter(pl.col("gold").is_not_null())["sense_id"].to_numpy()
-    in_dev = df["gold_rel"].is_not_null().to_numpy() if "gold_rel" in df.columns else labelled
+    y = df["gold"].fill_null(-1).to_numpy()[labelled]
     sense_ids = df["sense_id"].to_numpy()
+    groups = sense_ids[labelled]
+    in_dev = df["gold_rel"].is_not_null().to_numpy() if "gold_rel" in df.columns else labelled
     p_cv = np.full(len(df), np.nan)
     for train, test in GroupKFold(n_splits=folds).split(x, y, groups):
         model = make_model(kind).fit(x[train], y[train])
@@ -236,6 +246,11 @@ def main() -> None:
         "--priors", action="store_true", help="include candidate/sense count priors as features"
     )
     ap.add_argument("--model", choices=("gbt", "lr"), default="gbt")
+    ap.add_argument(
+        "--ambiguous-only",
+        action="store_true",
+        help="train only on dev senses with two or more real candidates",
+    )
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -243,11 +258,11 @@ def main() -> None:
     features = feature_columns(df, priors=args.priors)
     logger.info("%d rows, %d features", len(df), len(features))
     df = df.with_columns(baseline_score(df))
-    df = fit_and_predict(df, features, args.model)
+    df = fit_and_predict(df, features, args.model, train_single=not args.ambiguous_only)
     df = df.with_columns(evidence(df), pl.col("p").round(3), pl.col("p_cv").round(3))
     df.write_parquet(args.scored)
 
-    out_cols = [*ID_COLUMNS, "p", "evidence"]
+    out_cols = [*ID_COLUMNS, "n_cands", "p", "evidence"]
     mapping = df.filter(pl.col("p") >= args.threshold).sort(
         ["sense_id", "p"], descending=[False, True]
     )
