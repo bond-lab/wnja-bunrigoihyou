@@ -9,8 +9,12 @@ wordnet (other members, hypernyms, hyponyms, co-hyponyms, similar and antonym
 synsets) overlaps with the candidate's neighbourhood in WLSP (小段落, 段落,
 分類項目, 中項目).  Hierarchy comes from the English wordnet through ILI.
 
-Rows for senses that appear in the dev set carry a ``gold`` label (1 for the
-gold WLSP sense, 0 for the other candidates); all other rows have a null label.
+Rows for senses that appear in the dev set carry a ``gold_rel`` column
+(``exact``, ``same_subpara``, ``same_para``, ``same_item``, ``other``) and a
+``gold`` label: 1 for the gold WLSP sense, 0 for candidates in a different
+分類項目, null for near-duplicates in the gold's group (they are not clear
+negatives, since WLSP lists many headwords more than once nearby).  Rows for
+other senses have null in both.
 
 Usage::
 
@@ -242,6 +246,49 @@ def read_gold(path: Path) -> dict[str, set[str]]:
     return dict(gold)
 
 
+def gold_relation(mid: str, golds: set[str], db: Wlsp) -> str:
+    """How a candidate relates to the gold WLSP senses of a dev-set wnja sense.
+
+    The dev set names one WLSP record per TUFS concept, but WLSP often lists
+    the same headword more than once nearby (other readings, near-duplicate
+    entries), so candidates in the same group as a gold record are not clear
+    negatives.
+
+    Args:
+        mid: 見出し番号 of the candidate
+        golds: Gold 見出し番号s of the sense
+        db: The indexed WLSP database
+
+    Returns:
+        ``exact``, ``same_subpara``, ``same_para``, ``same_item`` or ``other``
+    """
+    if mid in golds:
+        return "exact"
+    rec = db.senses[mid]
+    for level in ("subpara", "para", "item"):
+        key = db.group_key(rec, level)
+        if any(db.group_key(db.senses[g], level) == key for g in golds):
+            return f"same_{level}"
+    return "other"
+
+
+def reading_match(word: wn.Word, mid: str, db: Wlsp) -> int | None:
+    """Whether a reading of the wnja word equals a reading of the WLSP sense.
+
+    Args:
+        word: A wnja word
+        mid: 見出し番号 of the candidate
+        db: The indexed WLSP database
+
+    Returns:
+        1 or 0, or None if the word has no kana form to compare
+    """
+    kana = kana_forms(word)
+    if not kana:
+        return None
+    return int(bool(kana & db.readings[mid]))
+
+
 def build(ja: wn.Wordnet, en: wn.Wordnet, db: Wlsp, gold: dict[str, set[str]]) -> pl.DataFrame:
     """Build the candidate table.
 
@@ -292,9 +339,15 @@ def build(ja: wn.Wordnet, en: wn.Wordnet, db: Wlsp, gold: dict[str, set[str]]) -
                     "go_no": int(rec.go_no),
                 }
                 row.update(pair_features(ctx, own, rec, db))
+                ym = reading_match(word, mid, db)
+                row["yomi_match"] = ym if ym is not None else 0
+                row["has_yomi"] = int(ym is not None)
                 if sense.id in gold:
-                    row["gold"] = int(mid in gold[sense.id])
+                    rel = gold_relation(mid, gold[sense.id], db)
+                    row["gold_rel"] = rel
+                    row["gold"] = {"exact": 1, "other": 0}.get(rel)
                 else:
+                    row["gold_rel"] = None
                     row["gold"] = None
                 rows.append(row)
     logger.info(

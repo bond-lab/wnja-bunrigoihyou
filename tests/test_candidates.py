@@ -76,3 +76,15 @@ def test_pair_features_counts_overlap(db: Wlsp) -> None:
     feats = pair_features(ctx, {"会う"}, rec, db)
     assert feats["ov_syn_subpara"] == 0
     assert feats["ov_sim_subpara"] == 1  # 会見する
+
+
+def test_gold_relation_and_reading_match(db: Wlsp) -> None:
+    from candidates import gold_relation, reading_match
+
+    assert gold_relation("00002", {"00002"}, db) == "exact"
+    assert gold_relation("00001", {"00002"}, db) == "same_subpara"  # 出会う, same 小段落
+    assert gold_relation("00003", {"00002"}, db) == "same_para"  # 出くわす, next 小段落
+    assert gold_relation("00004", {"00002"}, db) == "other"  # 2.3520
+    assert reading_match(FakeWord("会う", "v", ["会う", "アウ"]), "00002", db) == 1
+    assert reading_match(FakeWord("会う", "v", ["会う", "カイ"]), "00002", db) == 0
+    assert reading_match(FakeWord("会う", "v", ["会う"]), "00002", db) is None
