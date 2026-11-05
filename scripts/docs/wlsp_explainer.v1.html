@@ -1,0 +1,961 @@
+<title>Reading the 分類語彙表</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one measure of running text; code, tables and the number diagram may run wider inside their own scroll boxes. */
+  :root{
+    --ground:#f3f4f7; --surface:#ffffff; --ink:#1c1f2b; --muted:#5c6270;
+    --accent:#2b4c7e; --accent-soft:#e4eaf4; --hair:#dde0e8;
+    --vermil:#b7442c; --vermil-soft:#f6e6e1;
+    --code-bg:#eceef3;
+    --seg-rui:#2b4c7e; --seg-bumon:#1f7a6d; --seg-chu:#8a6d1f; --seg-item:#b7442c;
+    --seg-para:#5c6270; --seg-sub:#5c6270; --seg-go:#5c6270;
+    --ok:#2f7d4f; --bad:#b7442c;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Hiragino Mincho ProN","Yu Mincho","Noto Serif CJK JP","Noto Serif JP",Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI","Hiragino Sans","Yu Gothic","Noto Sans CJK JP",Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono CJK JP","Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#12151c; --surface:#1a1e27; --ink:#e6e8ee; --muted:#9aa1b0;
+      --accent:#8fb0e0; --accent-soft:#1f2b3f; --hair:#2a3040;
+      --vermil:#e2826b; --vermil-soft:#3a2520;
+      --code-bg:#161a22;
+      --seg-rui:#8fb0e0; --seg-bumon:#5fc2b1; --seg-chu:#d6b358; --seg-item:#e2826b;
+      --seg-para:#9aa1b0; --seg-sub:#9aa1b0; --seg-go:#9aa1b0;
+      --ok:#5bbd82; --bad:#e2826b;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#12151c; --surface:#1a1e27; --ink:#e6e8ee; --muted:#9aa1b0;
+    --accent:#8fb0e0; --accent-soft:#1f2b3f; --hair:#2a3040;
+    --vermil:#e2826b; --vermil-soft:#3a2520;
+    --code-bg:#161a22;
+    --seg-rui:#8fb0e0; --seg-bumon:#5fc2b1; --seg-chu:#d6b358; --seg-item:#e2826b;
+    --seg-para:#9aa1b0; --seg-sub:#9aa1b0; --seg-go:#9aa1b0;
+    --ok:#5bbd82; --bad:#e2826b;
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--serif);line-height:1.65;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .wrap{max-width:46rem;margin:0 auto;padding-block:3rem 5rem;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+  .eyebrow{font-family:var(--sans);font-size:.72rem;font-weight:600;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
+  h1{font-size:2.1rem;line-height:1.15;margin:0 0 .4rem;text-wrap:balance;font-weight:600}
+  .lede{font-size:1.12rem;color:var(--muted);margin:0 0 1.4rem;text-wrap:balance}
+  .meta{font-family:var(--mono);font-size:.78rem;color:var(--muted);
+    border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);
+    padding:.6rem 0;display:flex;gap:1.2rem;flex-wrap:wrap}
+
+  nav.toc{margin:2rem 0 2.5rem;font-family:var(--sans);font-size:.9rem}
+  nav.toc ol{list-style:none;counter-reset:s;padding:0;margin:0;display:grid;gap:.3rem}
+  nav.toc li{counter-increment:s}
+  nav.toc a{color:var(--ink);text-decoration:none;display:flex;gap:.6rem;
+    padding:.35rem .5rem;border-radius:6px}
+  nav.toc a::before{content:counter(s,decimal-leading-zero);color:var(--accent);
+    font-variant-numeric:tabular-nums;font-weight:600}
+  nav.toc a:hover{background:var(--accent-soft)}
+
+  section{margin:3rem 0}
+  h2{font-size:1.5rem;margin:0 0 .8rem;font-weight:600;padding-bottom:.3rem;
+    border-bottom:2px solid var(--accent-soft);text-wrap:balance}
+  h3{font-size:1.06rem;font-family:var(--sans);font-weight:600;margin:1.6rem 0 .4rem}
+  p{margin:.8rem 0}
+  ul,ol{padding-left:1.4rem}
+  li{margin:.25rem 0}
+  a{color:var(--accent)}
+  strong{font-weight:600}
+  .ja{font-family:var(--serif)}
+  .en{color:var(--muted)}
+
+  code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);
+    padding:.1em .35em;border-radius:4px}
+  pre{font-family:var(--mono);font-size:.8rem;line-height:1.5;
+    background:var(--code-bg);border:1px solid var(--hair);border-radius:8px;
+    padding:.9rem 1.05rem;overflow-x:auto;white-space:pre;margin:1rem 0;min-width:0}
+  pre code{background:none;padding:0;font-size:1em}
+  pre.data{background:var(--surface)}
+  .ref{font-family:var(--mono);font-size:.76rem;color:var(--muted);display:block;margin:-.4rem 0 .9rem}
+
+  table.toy{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.86rem;font-family:var(--sans)}
+  table.toy th,table.toy td{text-align:left;padding:.45rem .55rem;border-bottom:1px solid var(--hair);vertical-align:top}
+  table.toy th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  table.toy td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  table.toy td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .wrap-x{overflow-x:auto;min-width:0}
+
+  .chip{font-family:var(--mono);font-size:.74rem;font-weight:600;padding:.12em .5em;
+    border-radius:999px;white-space:nowrap;border:1px solid currentColor}
+  .k-A{color:var(--accent)} .k-B{color:var(--vermil)} .k-n{color:var(--seg-bumon)}
+
+  .callout{background:var(--accent-soft);border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .callout p{margin:.3rem 0}
+
+  .caveat{font-family:var(--sans);font-size:.86rem;line-height:1.45;color:var(--ink);
+    background:var(--vermil-soft);border:1px solid color-mix(in srgb,var(--vermil) 45%,transparent);
+    border-radius:8px;padding:.7rem .9rem;margin:1.2rem 0}
+  .caveat b{color:var(--vermil)}
+
+  /* code anatomy: 2.3520-01-01-01 */
+  .anat{display:flex;flex-wrap:wrap;gap:.35rem;align-items:flex-end;justify-content:center;
+    margin:1.4rem 0;font-family:var(--sans)}
+  .anat .seg{display:flex;flex-direction:column;align-items:center;gap:.25rem;min-width:0}
+  .anat .seg b{font-family:var(--mono);font-size:1.7rem;font-weight:600;line-height:1;
+    padding:.3rem .45rem;border-radius:6px;background:var(--surface);
+    border:1px solid var(--hair);border-bottom-width:3px}
+  .anat .seg small{font-size:.7rem;color:var(--muted);text-align:center;line-height:1.25;max-width:6.5rem}
+  .anat .seg small strong{display:block;font-size:.76rem;color:var(--ink)}
+  .anat .dot{font-family:var(--mono);font-size:1.7rem;color:var(--muted);padding-bottom:2.2rem}
+  .s-rui b{border-bottom-color:var(--seg-rui)!important;color:var(--seg-rui)}
+  .s-bumon b{border-bottom-color:var(--seg-bumon)!important;color:var(--seg-bumon)}
+  .s-chu b{border-bottom-color:var(--seg-chu)!important;color:var(--seg-chu)}
+  .s-item b{border-bottom-color:var(--seg-item)!important;color:var(--seg-item)}
+  .s-para b{border-bottom-color:var(--seg-para)!important}
+  .s-sub b{border-bottom-color:var(--seg-sub)!important}
+  .s-go b{border-bottom-color:var(--seg-go)!important}
+
+  /* hierarchy tree */
+  .tree{font-family:var(--sans);font-size:.86rem;list-style:none;padding:0;margin:1rem 0}
+  .tree ul{list-style:none;padding-left:1.1rem;margin:.15rem 0;border-left:1px solid var(--hair)}
+  .tree li{margin:.2rem 0;padding-left:.5rem}
+  .tree .lvl{font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-right:.4rem}
+  .tree .key{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .tree .here{background:var(--accent-soft);border-radius:4px;padding:.05rem .35rem}
+  .tree .sib{color:var(--muted)}
+
+  /* record → sense → index flow */
+  .flow{display:flex;align-items:stretch;flex-wrap:wrap;gap:.5rem;justify-content:center;
+    margin:1.4rem 0;font-family:var(--sans);font-size:.8rem}
+  .node{background:var(--surface);border:1px solid var(--hair);border-radius:8px;
+    padding:.5rem .7rem;min-width:0;box-shadow:0 1px 0 var(--hair)}
+  .node b{display:block;color:var(--accent);font-size:.88rem}
+  .node small{color:var(--muted);font-family:var(--mono);font-size:.7rem;display:block}
+  .arrow{color:var(--muted);font-weight:700;align-self:center}
+  .arrow small{display:block;font-size:.64rem;font-family:var(--mono);font-weight:400;color:var(--accent)}
+
+  /* quiz */
+  .quiz .q{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:1.1rem 1.2rem;margin:1rem 0}
+  .quiz .qhead{font-weight:600;margin:0 0 .7rem;font-family:var(--sans);font-size:1rem}
+  .quiz .qhead span{color:var(--accent);font-family:var(--mono);margin-right:.5rem}
+  .quiz ul{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
+  .quiz button.opt{width:100%;text-align:left;font:inherit;font-family:var(--sans);font-size:.92rem;
+    background:var(--ground);color:var(--ink);cursor:pointer;border:1px solid var(--hair);
+    border-radius:8px;padding:.6rem .8rem;transition:border-color .15s,background .15s}
+  .quiz button.opt:hover{border-color:var(--accent)}
+  .quiz button.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .quiz button.opt.correct{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
+  .quiz button.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+  .quiz button.opt[disabled]{cursor:default}
+  .quiz .why{font-size:.88rem;color:var(--muted);margin:.7rem 0 0;padding-left:.6rem;border-left:2px solid var(--hair);display:none}
+  .quiz .q.answered .why{display:block}
+
+  footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--hair);font-family:var(--sans);font-size:.82rem;color:var(--muted)}
+  .prov{font-family:var(--mono);font-size:.74rem;line-height:1.55;margin-top:.7rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">wnja-bunrigoihyou · Code explainer</p>
+    <h1>Reading the 分類語彙表</h1>
+    <p class="lede">How <code>wlsp.py</code> turns the 101,067-line WLSP database into senses,
+      written forms, readings and neighbourhoods that the mapping scripts can query.</p>
+    <div class="meta">
+      <span>scripts/wlsp.py</span><span>322 lines</span><span>deps: stdlib only</span>
+      <span>imported by candidates.py, features_chive.py, features_sent.py, judge_claude.py, build_devset.py</span>
+    </div>
+    <p class="caveat"><b>Generated by an AI.</b> This page was written from the code and can be
+      wrong: a misread line, an invented detail, a stale number. Trust the code, not this page.
+      Check anything that matters against <code>scripts/wlsp.py</code>, and run the snippets.
+      Every example and count here comes from one load of
+      <code>data/WLSP/bunruidb.txt</code> (分類語彙表増補改訂版データベース ver 1.0.1) on
+      2026-11-05; the snippets that produced them are on the page. See
+      <a href="#trust">How much to trust this</a>.</p>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#background">Background: the database and its numbers</a></li>
+      <li><a href="#intuition">Intuition: one verb, two addresses</a></li>
+      <li><a href="#code">Code: how the loader runs</a></li>
+      <li><a href="#quiz">Quiz: check yourself</a></li>
+      <li><a href="#trust">How much to trust this</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <p>The <strong>分類語彙表</strong> (<em>Bunrui Goihyō</em>, "Word List by Semantic
+      Principles", WLSP) is a Japanese thesaurus from the National Institute for Japanese
+      Language and Linguistics (NINJAL). The 2004 増補改訂版 is distributed as one CSV file,
+      <code>bunruidb.txt</code>, in Shift_JIS, with one record per headword occurrence. The
+      project clones it into <code>data/WLSP</code> from
+      <a href="https://github.com/masayu-a/WLSP">masayu-a/WLSP</a>; the version loaded here is
+      ver 1.0.1. The same headword can occur in several places, and each place is a sense: the
+      verb <span class="ja">会う</span> "meet" is listed under
+      <span class="ja">合体・出会い・集合など</span> "joining, encountering, gathering" and again
+      under <span class="ja">応接・送迎</span> "receiving and seeing off". The project's job is to
+      map Japanese WordNet (wnja 2.1) senses onto those WLSP senses, and
+      <code>wlsp.py</code> is the loader every other script reaches for.</p>
+
+    <h3>One record, fifteen fields</h3>
+    <p>The first line of the file, and the two that describe the verb above:</p>
+    <pre class="data">$ head -1 data/WLSP/bunruidb.txt | iconv -f shift_jis -t utf-8
+000001,00001,A,体,関係,事柄,事柄,1.1000,01,01,01,者（もの）,者,もの,のも
+$ iconv -f shift_jis -t utf-8 data/WLSP/bunruidb.txt | grep -n '^0\(72300\|84043\),'
+72297:072300,69369,B,用,関係,作用,合体・出会い・集合など,2.1550,09,01,01,あう（会・遭）,あう,あう,うあ
+84040:084043,80089,B,用,活動,交わり,応接・送迎,2.3520,01,01,01,あう（会・遭）,あう,あう,うあ</pre>
+    <p>Read left to right, the fifteen columns are the ones <code>WLSP_FIELDS</code> names
+      (<a href="#c-fields">wlsp.py:26–42</a>):</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>#</th><th>Field</th><th>WLSP column</th><th>Record 084043</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td><code>record_id</code></td><td>レコードID番号</td><td class="num">084043</td></tr>
+        <tr><td class="num">2</td><td><code>midashi_no</code></td><td>見出し番号</td><td class="num">80089</td></tr>
+        <tr><td class="num">3</td><td><code>record_type</code></td><td>レコード種別</td><td class="num">B</td></tr>
+        <tr><td class="num">4–7</td><td><code>rui, bumon, chukoumoku, bunrui_koumoku</code></td><td>類, 部門, 中項目, 分類項目</td><td class="ja">用, 活動, 交わり, 応接・送迎</td></tr>
+        <tr><td class="num">8</td><td><code>bunrui_no</code></td><td>分類番号</td><td class="num">2.3520</td></tr>
+        <tr><td class="num">9–11</td><td><code>danraku, shodanraku, go_no</code></td><td>段落番号, 小段落番号, 語番号</td><td class="num">01, 01, 01</td></tr>
+        <tr><td class="num">12</td><td><code>midashi</code></td><td>見出し</td><td class="ja">あう（会・遭）</td></tr>
+        <tr><td class="num">13</td><td><code>midashi_hontai</code></td><td>見出し本体</td><td class="ja">あう</td></tr>
+        <tr><td class="num">14</td><td><code>yomi</code></td><td>読み</td><td class="ja">あう</td></tr>
+        <tr><td class="num">15</td><td><code>gyakuyomi</code></td><td>逆読み (reversed reading, for sorting)</td><td class="ja">うあ</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>Record types: A, B and the numbered children</h3>
+    <p>The printed thesaurus lists some headwords with several spellings or readings on one
+      line: <span class="ja">あう（会・遭）</span>, <span class="ja">市立（しりつ・いちりつ）</span>.
+      The database keeps that line as a type <span class="chip k-B">B</span> record and adds one
+      child record per variant, typed <code>1</code>, <code>2</code>, … in order. The children
+      share the parent's <strong>見出し番号</strong> but get their own record ID and 語番号. A
+      headword with no variants is a type <span class="chip k-A">A</span> record on its own.
+      <code>wlsp.py</code> calls a 見出し番号 a <strong>sense</strong>
+      (<a href="#c-doc">wlsp.py:3–8</a>): the A or B record is its canonical entry and the
+      children only add written forms and readings.</p>
+    <pre class="data">$ iconv -f shift_jis -t utf-8 data/WLSP/bunruidb.txt | grep '^08404[345],'
+084043,80089,B,用,活動,交わり,応接・送迎,2.3520,01,01,01,あう（会・遭）,あう,あう,うあ
+084044,80089,1,用,活動,交わり,応接・送迎,2.3520,01,01,02,会う,会う,あう,うあ
+084045,80089,2,用,活動,交わり,応接・送迎,2.3520,01,01,03,遭う,遭う,あう,うあ</pre>
+    <p>So 見出し番号 80089 is one sense with three written forms (<span class="ja">あう, 会う,
+      遭う</span>) and one reading. Compare <span class="ja">市立</span>, where the split is by
+      reading instead: records 001956–001958 are <code>B</code>
+      <span class="ja">市立（しりつ・いちりつ）</span>, <code>1</code> <span class="ja">市立（しりつ）</span>,
+      <code>2</code> <span class="ja">市立（いちりつ）</span>, giving sense 01848 one form and the
+      readings <span class="ja">しりつ</span>, <span class="ja">いちりつ</span> and, from the parent
+      row, the joined string <span class="ja">しりつ・いちりつ</span>. How the 101,067 records divide:</p>
+    <pre class="data">$ cd ~/git/wnja-bunrigoihyou && .venv/bin/python
+>>> import sys; sys.path.insert(0, "scripts")
+>>> from pathlib import Path
+>>> from collections import Counter
+>>> from wlsp import Wlsp, normalise_midashi, fold
+>>> db = Wlsp.load(Path("data/WLSP/bunruidb.txt"))     # about 2 s
+>>> len(db.records), len(db.senses)
+(101067, 96051)
+>>> Counter(r.record_type for r in db.records.values()).most_common()
+[('A', 93463), ('1', 2589), ('B', 2588), ('2', 2283), ('3', 114), ('4', 27), ('5', 2), ('6', 1)]</pre>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Type</th><th>Records</th><th>Meaning</th><th>Examples</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip k-A">A</span></td><td class="r">93,463</td><td>a headword with no variants; a sense by itself</td>
+          <td class="ja">者（もの）, 対象, 国立, コーヒー, 出会う</td></tr>
+        <tr><td><span class="chip k-B">B</span></td><td class="r">2,588</td><td>a headword with variants; the parent of a sense</td>
+          <td class="ja">あう（会・遭）, 市立（しりつ・いちりつ）, 会わせる・会わす, 出くわす・出っくわす, 遍・返</td></tr>
+        <tr><td><code>1</code> … <code>6</code></td><td class="r">5,016</td><td>one variant each, under the preceding B record</td>
+          <td class="ja">会う, 遭う, 市立（しりつ）, 会わせる, 出っくわす</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>93,463 + 2,588 = 96,051, which is why <code>len(db.senses)</code> is 96,051. The one
+      record of type <code>6</code> closes the longest family: <span class="ja">遍・返</span>
+      "times" (sense 1.1962-42-01-04) has six children, <span class="ja">遍</span> and
+      <span class="ja">返</span> each read <span class="ja">へん</span>, <span class="ja">べん</span>
+      and <span class="ja">ぺん</span>. The WLSP documentation (<code>kaisetsu.txt</code>) says
+      101,070 records, but <code>bunruidb.txt</code> ver 1.0.1 has 101,067: record IDs 024807,
+      024809 and 053757 are absent from the file as distributed, so <code>read_wlsp</code> sees
+      101,067. The project README now records this discrepancy.</p>
+
+    <h3>The 分類番号: an address in the thesaurus</h3>
+    <p>Where a record sits is encoded in the <strong>分類番号</strong> plus three more numbers.
+      Take the <span class="ja">応接・送迎</span> sense of <span class="ja">会う</span>, whose full
+      code is <code>2.3520-01-01-01</code>:</p>
+    <div class="wrap-x">
+    <div class="anat" aria-label="The parts of the code 2.3520-01-01-01">
+      <div class="seg s-rui"><b>2</b><small><strong>類</strong>用 (verb)</small></div>
+      <div class="dot">.</div>
+      <div class="seg s-bumon"><b>3</b><small><strong>部門</strong>活動</small></div>
+      <div class="seg s-chu"><b>5</b><small><strong>中項目</strong>2.35 交わり</small></div>
+      <div class="seg s-item"><b>20</b><small><strong>分類項目</strong>2.3520 応接・送迎</small></div>
+      <div class="dot">-</div>
+      <div class="seg s-para"><b>01</b><small><strong>段落</strong>paragraph</small></div>
+      <div class="dot">-</div>
+      <div class="seg s-sub"><b>01</b><small><strong>小段落</strong>sub-paragraph</small></div>
+      <div class="dot">-</div>
+      <div class="seg s-go"><b>01</b><small><strong>語番号</strong>word no.</small></div>
+    </div>
+    </div>
+    <p>The digits nest. The first digit is the <strong>類</strong>, the broad class, which
+      <code>RUI_TO_POS</code> maps to a wordnet part of speech
+      (<a href="#c-fields">wlsp.py:45</a>). The digit after the point is the <strong>部門</strong>,
+      the first two digits after the point the <strong>中項目</strong>, and all four the
+      <strong>分類項目</strong>, the topical category. The 類 and 部門 in the data:</p>
+    <pre class="data">>>> Counter((r.bunrui_no[0], r.labels.split("/")[0], r.bunrui_no[2], r.labels.split("/")[1])
+...         for r in db.senses.values()).most_common()
+[(('1', '体', '3', '活動'), 23206), (('1', '体', '1', '関係'), 14484), (('2', '用', '3', '活動'), 12869),
+ (('1', '体', '4', '生産物'), 9399), (('1', '体', '5', '自然'), 9208), (('1', '体', '2', '主体'), 8287),
+ (('2', '用', '1', '関係'), 7287), (('3', '相', '1', '関係'), 3974), (('3', '相', '3', '活動'), 3799),
+ (('2', '用', '5', '自然'), 1526), (('3', '相', '5', '自然'), 1142), (('4', '他', '3', ''), 632),
+ (('4', '他', '1', ''), 204), (('4', '他', '5', ''), 34)]</pre>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>類</th><th><code>pos</code></th><th>Senses</th><th>部門 (digit after the point)</th><th>First senses in the file</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1 <span class="ja">体</span></td><td class="num">n</td><td class="r">64,584</td>
+          <td class="ja">1 関係, 2 主体, 3 活動, 4 生産物, 5 自然</td><td class="ja">者, の, 分, やつ, −こ</td></tr>
+        <tr><td class="num">2 <span class="ja">用</span></td><td class="num">v</td><td class="r">21,682</td>
+          <td class="ja">1 関係, 3 活動, 5 自然</td><td class="ja">こうする, こうなる, そうする, そうなる, ああする</td></tr>
+        <tr><td class="num">3 <span class="ja">相</span></td><td class="num">a</td><td class="r">8,915</td>
+          <td class="ja">1 関係, 3 活動, 5 自然</td><td class="ja">この, こんな, こういう, こうした, かかる</td></tr>
+        <tr><td class="num">4 <span class="ja">他</span></td><td class="num">r</td><td class="r">870</td>
+          <td>1, 3, 5 with an empty 部門 label</td><td class="ja">及び, 並びに, 且つ, また, 対</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The 類 labels are grammatical only loosely: <span class="ja">体</span> is nouns,
+      <span class="ja">用</span> verbs (<span class="ja">する</span>-verbs included:
+      <span class="ja">遭遇する</span>, <span class="ja">再会する</span>), <span class="ja">相</span>
+      adjectives, adjectival nouns and adverbs (<span class="ja">この</span>,
+      <span class="ja">こんな</span>), and <span class="ja">他</span> the rest, conjunctions and
+      interjections (<span class="ja">及び</span>, <span class="ja">おーしーつくつく</span>, the last
+      record in the file, under <span class="ja">動物の鳴き声</span>). Only the four digits
+      <code>1</code>–<code>4</code> occur, so the <code>"x"</code> fallback in <code>pos</code> never
+      fires on this data. The 他 class has no 部門 name, which is why its <code>labels</code> read
+      <span class="ja">他//接続/累加</span>, with an empty slot.</p>
+
+    <p>Below the 分類項目, the 2004 database adds three numbers the printed book only implied by
+      layout. Records in the same <strong>小段落</strong> are close synonyms; the same
+      <strong>段落</strong> groups related senses; the <strong>語番号</strong> orders words within
+      the 小段落 (<a href="#c-doc">wlsp.py:10–13</a>). The whole hierarchy, from the class down to
+      the verb, with a few siblings at each level:</p>
+    <ul class="tree">
+      <li><span class="lvl">類</span><span class="key">2</span> <span class="ja">用</span> (verbs; 21,682 senses)
+        <ul>
+          <li><span class="lvl">部門</span><span class="key">2.3</span> <span class="ja">活動</span> (12,869)
+            <span class="sib ja">· siblings 2.1 関係, 2.5 自然</span>
+            <ul>
+              <li><span class="lvl">中項目</span><span class="key">2.35</span> <span class="ja">交わり</span> (1,200)
+                <span class="sib ja">· siblings 2.30 心, 2.31 言語, 2.33 生活, 2.34 行為, 2.36 待遇, 2.37 経済, 2.38 事業</span>
+                <ul>
+                  <li><span class="lvl">分類項目</span><span class="key">2.3520</span> <span class="ja">応接・送迎</span> (205)
+                    <span class="sib ja">· siblings 2.3500 交わり, 2.3510 集会, 2.3530 約束, 2.3542 競争, 2.3551 戦争, 2.3570 勝敗</span>
+                    <ul>
+                      <li><span class="lvl">段落</span><span class="key">2.3520-01</span> (11 senses: <span class="ja">あう … 再見する</span>)
+                        <span class="sib ja">· siblings 02 面会する, 03 待つ, 06 訪ねる, 08 挨拶する, 12 招く, 18 送迎する, 21 別れる</span>
+                        <ul>
+                          <li><span class="lvl">小段落</span><span class="key">2.3520-01-01</span> (2 senses)
+                            <span class="sib ja">· siblings 01-02 会する, 出会う, 顔を合わせる, 相まみえる; 01-03 遭遇する, 出くわす・出っくわす, 邂逅する, 再会する, 再見する</span>
+                            <ul>
+                              <li><span class="lvl">語</span><span class="key here">2.3520-01-01-01</span> <span class="ja">あう（会・遭）</span>, sense 80089
+                                <span class="sib ja">· 01-01-04 会わせる・会わす</span></li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <p>The surprise in this tree is that the 語番号 are not dense: in 小段落 2.3520-01-01 the
+      parent <span class="ja">あう</span> is word 01 and <span class="ja">会わせる・会わす</span> is
+      word 04, because 02 and 03 went to the children <span class="ja">会う</span> and
+      <span class="ja">遭う</span>. Children take 語番号 but are not senses.</p>
+
+    <div class="callout">
+      <p><strong>240 senses that are not words.</strong> The file also carries records whose
+        headword is <span class="ja">＊</span>, one per semantic break inside a 分類項目
+        (<code>kaisetsu.txt</code> calls them 意味的区切りを示すレコード). They are type
+        <code>A</code>, always 小段落 and 語番号 <code>99</code>, and <code>load()</code> counts
+        them as senses like any other A record. After folding, <span class="ja">＊</span> becomes
+        the ASCII <code>*</code>, so <code>db.by_form["*"]</code> holds 240 見出し番号, the most
+        ambiguous "form" in the index. Nothing in <code>wlsp.py</code> filters them.</p>
+      <pre class="data">>>> star = [r for r in db.senses.values() if r.lemma == "＊"]
+>>> len(star), star[0].code, star[0].labels
+(240, '1.1010-08-99-99', '体/関係/事柄/こそあど・他')
+>>> len(db.by_form["*"])
+240</pre>
+    </div>
+
+    <h3>Headword notation: 見出し and 見出し本体</h3>
+    <p>The <code>midashi</code> column carries two kinds of annotation in full-width brackets. Round
+      brackets give a reading or spelling hint: <span class="ja">者（もの）</span>,
+      <span class="ja">あう（会・遭）</span>. Square brackets give a usage note with
+      <span class="ja">〜</span> standing for the headword: <span class="ja">−こ［椀〜］</span>
+      "-ko as in 椀こ", <span class="ja">変［本能寺の〜］</span> "the 変 of 本能寺",
+      <span class="ja">迫真［〜の演技］</span>, <span class="ja">生（なま）［〜の声］</span> with both.
+      In this file 8,016 records have a round-bracket hint and 1,531 a square-bracket note
+      (204 have both); 9,343 records differ between <code>midashi</code> and <code>midashi_hontai</code>, and the
+      remaining 91,724 are identical in both. The 本体 column already has the brackets removed by
+      NINJAL, so what <code>normalise_midashi</code> strips in practice is the <code>midashi</code>
+      column (<a href="#c-norm">wlsp.py:102–111</a>):</p>
+    <pre class="data">>>> [normalise_midashi(m) for m in ("者（もの）", "−こ［椀〜］", "あう（会・遭）", "市立（しりつ・いちりつ）", "生（なま）［〜の声］")]
+['者', '−こ', 'あう', '市立', '生']
+>>> sum(1 for r in db.records.values() if r.midashi_hontai != r.lemma)
+0</pre>
+    <p>That last line is worth a pause: <code>WlspEntry.lemma</code> applies the stripper to
+      <code>midashi_hontai</code>, and on this file that changes nothing. The property is
+      insurance, and the place the function does real work is wherever a caller feeds it a raw
+      <code>midashi</code>. One wart is visible in the examples: a headword with two hints,
+      <span class="ja">何（なに）か・何（なん）か</span>, normalises to
+      <span class="ja">何か・何か</span>.</p>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <p>Three ideas carry the module. A <strong>record</strong> is one line of the file; a
+      <strong>sense</strong> is a 見出し番号, which gathers a parent record and its children; and a
+      sense's <strong>neighbourhood</strong> is everything that shares a prefix of its code. The
+      loader builds indices in both directions: from a written form or reading to the senses that
+      carry it, and from a sense to the senses around it.</p>
+
+    <div class="wrap-x">
+    <div class="flow">
+      <div class="node"><b>records</b><small>101,067 · by record ID</small><small class="ja">084043 B あう（会・遭）</small><small class="ja">084044 1 会う</small><small class="ja">084045 2 遭う</small></div>
+      <div class="arrow">→<small>A or B</small></div>
+      <div class="node"><b>senses</b><small>96,051 · by 見出し番号</small><small class="ja">80089 → record 084043</small></div>
+      <div class="arrow">→<small>fold(lemma)</small></div>
+      <div class="node"><b>forms / by_form</b><small>81,216 folded forms</small><small class="ja">会う → [69369, 80089]</small></div>
+      <div class="arrow">→<small>code prefix</small></div>
+      <div class="node"><b>groups</b><small>subpara 32,195 · para 9,909</small><small>item 895 · middle 95</small></div>
+    </div>
+    </div>
+
+    <h3>One verb, two addresses</h3>
+    <p>Look up <span class="ja">会う</span> and two senses come back. Both are B records with the
+      same three forms and the same reading; what differs is the address, and so the company
+      they keep:</p>
+    <pre class="data">>>> db.lookup("会う")
+['69369', '80089']
+>>> for mid in db.lookup("会う"):
+...     r = db.senses[mid]
+...     print(mid, r.code, r.labels, sorted(db.forms[mid]), db.readings[mid])
+...
+69369 2.1550-09-01-01 用/関係/作用/合体・出会い・集合など ['あう', '会う', '遭う'] {'あう'}
+80089 2.3520-01-01-01 用/活動/交わり/応接・送迎 ['あう', '会う', '遭う'] {'あう'}</pre>
+    <p>Sense 69369 lives in 部門 1 <span class="ja">関係</span> "relations", under
+      <span class="ja">作用</span> "action" and the item "joining, encountering, gathering": meeting
+      as two things coming together. Sense 80089 lives in 部門 3 <span class="ja">活動</span>
+      "activities", under <span class="ja">交わり</span> "social contact" and "receiving and seeing
+      off": meeting as something people do to each other. The neighbours make the split concrete.
+      Every row below is a real sense from the two 段落:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Sense</th><th>Code</th><th>Headword</th><th>Relation to 会う</th></tr></thead>
+      <tbody>
+        <tr><td class="num">69369</td><td class="num">2.1550-09-01-01</td><td class="ja">あう（会・遭）</td><td>the sense itself</td></tr>
+        <tr><td class="num">69370</td><td class="num">2.1550-09-01-04</td><td class="ja">出会う</td><td rowspan="5">same 小段落 (01): close synonyms</td></tr>
+        <tr><td class="num">69371</td><td class="num">2.1550-09-01-05</td><td class="ja">出くわす・出っくわす</td></tr>
+        <tr><td class="num">69372</td><td class="num">2.1550-09-01-08</td><td class="ja">遭遇する</td></tr>
+        <tr><td class="num">69373</td><td class="num">2.1550-09-01-09</td><td class="ja">逢着する</td></tr>
+        <tr><td class="num">69374</td><td class="num">2.1550-09-01-10</td><td class="ja">際会する</td></tr>
+        <tr><td class="num">69375</td><td class="num">2.1550-09-02-01</td><td class="ja">巡り合う</td><td rowspan="4">same 段落 (09), other 小段落: related senses</td></tr>
+        <tr><td class="num">69377</td><td class="num">2.1550-09-03-01</td><td class="ja">行き合う</td></tr>
+        <tr><td class="num">69380</td><td class="num">2.1550-09-04-01</td><td class="ja">落ち合う</td></tr>
+        <tr><td class="num">69384</td><td class="num">2.1550-09-05-02</td><td class="ja">ぶつかる</td></tr>
+        <tr><td class="num">80089</td><td class="num">2.3520-01-01-01</td><td class="ja">あう（会・遭）</td><td>the other sense</td></tr>
+        <tr><td class="num">80090</td><td class="num">2.3520-01-01-04</td><td class="ja">会わせる・会わす</td><td>same 小段落 (01): its causative</td></tr>
+        <tr><td class="num">80092</td><td class="num">2.3520-01-02-02</td><td class="ja">出会う</td><td rowspan="4">same 段落 (01), other 小段落</td></tr>
+        <tr><td class="num">80093</td><td class="num">2.3520-01-02-03</td><td class="ja">顔を合わせる</td></tr>
+        <tr><td class="num">80095</td><td class="num">2.3520-01-03-01</td><td class="ja">遭遇する</td></tr>
+        <tr><td class="num">80098</td><td class="num">2.3520-01-03-06</td><td class="ja">再会する</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Notice that <span class="ja">出会う</span>, <span class="ja">遭遇する</span> and
+      <span class="ja">出くわす</span> appear on both sides: WLSP lists the same headword in both
+      categories, each time as its own sense. That is why the project's evaluation counts a
+      prediction in the gold record's 小段落 or 段落 as a lenient hit. It is also why the two
+      senses are hard to tell apart by their forms alone (identical) and easy by their
+      neighbourhoods: 2.1550-09 continues with <span class="ja">行き当たる</span>,
+      <span class="ja">突き当たる</span>, <span class="ja">鉢合わせする</span>, 2.3520-01 with
+      <span class="ja">相まみえる</span>, <span class="ja">再会する</span>, <span class="ja">再見する</span>.
+      <code>context_text</code> packages exactly that difference into one line per sense for the
+      embedding and judging tiers:</p>
+    <pre class="data">>>> print(db.context_text(db.senses["69369"]))
+用/関係/作用/合体・出会い・集合など: あう; 同義: 出会う、出くわす・出っくわす、遭遇する、逢着する、際会する; 関連: 出会う、出くわす・出っくわす、遭遇する、逢着する、際会する、巡り合う、巡り合わせる、行き合う、行き合わせる、邂逅する、落ち合う、かち合う、行き当たる、突き当たる、ぶつかる、鉢合わせする
+>>> print(db.context_text(db.senses["80089"]))
+用/活動/交わり/応接・送迎: あう; 同義: 会わせる・会わす; 関連: 会わせる・会わす、会する、出会う、顔を合わせる、相まみえる、遭遇する、出くわす・出っくわす、邂逅する、再会する、再見する</pre>
+
+    <h3>Forms fold, readings do not</h3>
+    <p>Matching a wnja lemma to a WLSP headword has to survive the usual Japanese spelling
+      variation. <code>fold</code> applies Unicode NFKC and then turns katakana into hiragana,
+      so a lookup is script-blind for kana and width-blind for the Latin letters WLSP writes in
+      full width (941 lemmas change under NFKC: <span class="ja">Ａ級</span> → <code>A級</code>,
+      <span class="ja">＊</span> → <code>*</code>). Real consequences in the index:</p>
+    <pre class="data">>>> fold("コーヒー"), fold("ｺｰﾋｰ"), fold("Ａ級")
+('こーひー', 'こーひー', 'A級')
+>>> db.lookup("コーヒー"), db.lookup("こーひー"), db.lookup("ｺｰﾋｰ")
+(['49763'], ['49763'], ['49763'])
+>>> db.lookup("アウ") == db.lookup("あう") == ['69369', '80089']
+True
+>>> db.lookup("珈琲"), db.lookup("会います")
+([], [])
+>>> [(f, sorted({db.senses[m].lemma for m in mids})) for f, mids in db.by_form.items()
+...  if len({db.senses[m].lemma for m in mids}) > 1 and len({fold(db.senses[m].lemma) for m in mids}) == 1][:6]
+[('これら', ['これら', 'コレラ']), ('はず', ['はず', 'ハズ']), ('まま', ['まま', 'ママ']),
+ ('かっと', ['かっと', 'カット']), ('とらぶる', ['トラブる', 'トラブル']), ('すぽっと', ['すぽっと', 'スポット'])]</pre>
+    <p>The fold is deliberate and blunt. It lets <span class="ja">トラブる</span> find
+      <span class="ja">トラブル</span>, and it also makes <span class="ja">これら</span> "these"
+      share an entry with <span class="ja">コレラ</span> "cholera" and <span class="ja">まま</span>
+      "as is" with <span class="ja">ママ</span> "mum": 54 folded forms merge headwords that differ
+      only in script. What it does not do is inflect (<span class="ja">会います</span> finds
+      nothing) or match readings (<span class="ja">珈琲</span> is not a WLSP spelling, and
+      <code>lookup</code> is a written-form lookup only; readings live in <code>by_yomi</code>,
+      which callers consult themselves, see the <a href="#c-lookup">lookup</a> step). Readings
+      are kept exactly as written, including the parent's joined form
+      <span class="ja">しりつ・いちりつ</span>.</p>
+
+    <h3>How crowded each index is</h3>
+    <pre class="data">>>> len(db.by_form), len(db.by_yomi), {p: len(v) for p, v in db.by_pos.items()}
+(81216, 68704, {'n': 64584, 'v': 21682, 'a': 8915, 'r': 870})
+>>> {lvl: len(g) for lvl, g in db.groups.items()}
+{'subpara': 32195, 'para': 9909, 'item': 895, 'middle': 95}
+>>> sorted(Counter(len(v) for v in db.by_form.values()).items())[:6]
+[(1, 66935), (2, 11530), (3, 1980), (4, 541), (5, 133), (6, 46)]
+>>> sorted(db.by_form.items(), key=lambda kv: -len(kv[1]))[:5]
+[('*', [...240 items...]), ('分', [...15...]), ('間', [...14...]), ('中', [...13...]), ('立てる', [...12...])]</pre>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Index</th><th>Keys</th><th>Key → values</th><th>Example key</th></tr></thead>
+      <tbody>
+        <tr><td><code>senses</code></td><td class="r">96,051</td><td>見出し番号 → canonical record</td><td class="num">80089 → 084043</td></tr>
+        <tr><td><code>forms</code></td><td class="r">96,051</td><td>見出し番号 → folded forms (1,945 senses have more than one)</td><td class="ja">80089 → {あう, 会う, 遭う}</td></tr>
+        <tr><td><code>readings</code></td><td class="r">96,051</td><td>見出し番号 → readings (1,439 senses have more than one)</td><td class="ja">01848 → {しりつ, いちりつ, しりつ・いちりつ}</td></tr>
+        <tr><td><code>by_form</code></td><td class="r">81,216</td><td>folded form → senses; 66,935 keys are unambiguous</td><td class="ja">会う → [69369, 80089]</td></tr>
+        <tr><td><code>by_yomi</code></td><td class="r">68,704</td><td>reading → senses</td><td class="ja">あう → 8 senses (−合う, 合う ×4, あう ×2, 遭う)</td></tr>
+        <tr><td><code>by_pos</code></td><td class="r">4</td><td>n / v / a / r → senses</td><td class="num">v → 21,682</td></tr>
+        <tr><td><code>groups["subpara"]</code></td><td class="r">32,195</td><td>(分類番号, 段落, 小段落) → senses; 1 to 51, mean 3.0</td><td class="num">('2.3520','01','01') → 2</td></tr>
+        <tr><td><code>groups["para"]</code></td><td class="r">9,909</td><td>(分類番号, 段落) → senses; 1 to 149, mean 9.7</td><td class="num">('2.3520','01') → 11</td></tr>
+        <tr><td><code>groups["item"]</code></td><td class="r">895</td><td>分類番号 → senses; 4 to 1,030, mean 107</td><td class="num">'2.3520' → 205</td></tr>
+        <tr><td><code>groups["middle"]</code></td><td class="r">95</td><td>類.部門中項目 → senses; 11 to 6,086, mean 1,011</td><td class="num">'2.35' → 1,200</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section id="code">
+    <h2>Code</h2>
+    <p>Nine parts, in the order a caller meets them: constants, the record class, two string
+      normalisers, the CSV reader, the index builder, and four query methods.</p>
+
+    <h3 id="c-doc">1 · The contract, in the docstring</h3>
+    <span class="ref">wlsp.py:1–14</span>
+    <p>The module docstring states the two decisions everything else follows: a sense is a
+      見出し番号 with its A or B record as canonical entry, and position is the 分類番号 plus
+      段落, 小段落 and 語番号, with 小段落 meaning close synonyms and 段落 meaning related senses.</p>
+
+    <h3 id="c-fields">2 · Constants</h3>
+    <span class="ref">wlsp.py:26–47</span>
+    <p><code>WLSP_FIELDS</code> names the fifteen columns in file order; <code>RUI_TO_POS</code>
+      turns the 類 digit into a wordnet part of speech; <code>_BRACKETS</code> matches the four
+      bracket styles a headword may carry.</p>
+    <pre><code>RUI_TO_POS = {"1": "n", "2": "v", "3": "a", "4": "r"}
+
+_BRACKETS = re.compile(r"（[^）]*）|\[[^\]]*\]|［[^］]*］|〔[^〕]*〕")</code></pre>
+    <p>Of the four alternatives, only full-width <span class="ja">（）</span> (8,016 records) and
+      <span class="ja">［］</span> (1,531) occur in <code>bunruidb.txt</code>; the ASCII
+      <code>[]</code> and <span class="ja">〔〕</span> branches never match on this data.</p>
+
+    <h3 id="c-entry">3 · <code>WlspEntry</code>: one record and its keys</h3>
+    <span class="ref">wlsp.py:50–99</span>
+    <p>A frozen dataclass with the eleven fields the project needs (the four label columns are
+      pre-joined into <code>labels</code>; 逆読み is dropped). Its properties derive the position
+      code, the bare lemma, the part of speech, and the four group keys, each a prefix of the
+      code:</p>
+    <pre><code>@property
+def code(self) -> str:
+    """Full WLSP position code, e.g. ``2.3520-01-01-02``."""
+    return f"{self.bunrui_no}-{self.danraku}-{self.shodanraku}-{self.go_no}"
+
+@property
+def middle_key(self) -> str:
+    """Key of the 中項目 group (類.部門中項目), e.g. ``2.35``."""
+    return self.bunrui_no[:4]
+
+@property
+def subpara_key(self) -> tuple[str, str, str]:
+    """Key of the 小段落 group."""
+    return (self.bunrui_no, self.danraku, self.shodanraku)</code></pre>
+    <p>For record 084043 these give:</p>
+    <pre class="data">>>> r = db.senses["80089"]
+>>> r.code, r.lemma, r.pos
+('2.3520-01-01-01', 'あう', 'v')
+>>> r.middle_key, r.item_key, r.para_key, r.subpara_key
+('2.35', '2.3520', ('2.3520', '01'), ('2.3520', '01', '01'))</pre>
+    <p><code>item_key</code> is the whole <code>bunrui_no</code> (line 84) and
+      <code>middle_key</code> its first four characters, <code>2.35</code> (line 89): the
+      point counts, so four characters is one digit of 類 and two of 部門中項目.</p>
+
+    <h3 id="c-norm">4 · <code>normalise_midashi</code></h3>
+    <span class="ref">wlsp.py:102–111</span>
+    <pre><code>def normalise_midashi(midashi: str) -> str:
+    return _BRACKETS.sub("", midashi).strip()</code></pre>
+    <p>Delete every bracketed span, then trim. <span class="ja">生（なま）［〜の声］</span> loses
+      both annotations and becomes <span class="ja">生</span>; <span class="ja">あう（会・遭）</span>
+      becomes <span class="ja">あう</span>, so the kanji variants in the hint are not recovered here
+      (they come from the child records instead). Nothing inside the brackets is used.</p>
+
+    <h3 id="c-fold">5 · Kana folding</h3>
+    <span class="ref">wlsp.py:114–147</span>
+    <pre><code>def hira_to_kata(text: str) -> str:
+    return "".join(chr(ord(c) + 0x60) if "ぁ" <= c <= "ゖ" else c for c in text)
+
+def kata_to_hira(text: str) -> str:
+    return "".join(chr(ord(c) - 0x60) if "ァ" <= c <= "ヶ" else c for c in text)
+
+def fold(text: str) -> str:
+    return kata_to_hira(unicodedata.normalize("NFKC", text))</code></pre>
+    <p>Hiragana and katakana sit 0x60 apart in Unicode (<span class="ja">あ</span> U+3042,
+      <span class="ja">ア</span> U+30A2), so a shift of the code point converts the script. The
+      ranges <span class="ja">ぁ</span>–<span class="ja">ゖ</span> and <span class="ja">ァ</span>–<span class="ja">ヶ</span>
+      cover the small kana and the <span class="ja">ヵ ヶ</span> counters but leave the long-vowel
+      mark <span class="ja">ー</span> alone, which is why <code>fold("コーヒー")</code> is
+      <span class="ja">こーひー</span> and not the WLSP reading <span class="ja">こおひい</span>.
+      NFKC runs first so that half-width <span class="ja">ｺｰﾋｰ</span> becomes full-width
+      katakana before the shift. <code>hira_to_kata</code> is not used inside this module;
+      <code>build_devset.py</code> imports it.</p>
+
+    <h3 id="c-read">6 · <code>read_wlsp</code>: the CSV pass</h3>
+    <span class="ref">wlsp.py:150–178</span>
+    <pre><code>with path.open(encoding="shift_jis", newline="") as fh:
+    for row in csv.reader(fh):
+        rec = dict(zip(WLSP_FIELDS, row, strict=True))
+        entries[rec["record_id"]] = WlspEntry(
+            ...
+            labels="/".join(
+                (rec["rui"], rec["bumon"], rec["chukoumoku"], rec["bunrui_koumoku"])
+            ),
+        )</code></pre>
+    <p>The file is decoded as Shift_JIS and read with the <code>csv</code> module, so a comma
+      inside a quoted field would be handled (none occur). <code>strict=True</code> on the
+      <code>zip</code> makes a row with the wrong number of columns raise instead of being
+      silently truncated. The dictionary is keyed by the zero-padded record ID
+      (<code>"084043"</code>, not <code>84043</code>), and because Python dictionaries keep
+      insertion order, <code>db.records.values()</code> is still file order, which is what the
+      group lists later rely on. The four label columns are joined with <code>/</code> at read
+      time, giving <span class="ja">用/活動/交わり/応接・送迎</span>, or
+      <span class="ja">他//接続/累加</span> where 部門 is empty. The pass takes about two seconds
+      and yields 101,067 entries.</p>
+
+    <h3 id="c-load">7 · <code>Wlsp.load</code>: building the indices</h3>
+    <span class="ref">wlsp.py:206–246</span>
+    <p>Two loops. The first walks every record, keeps the A and B records as the canonical entry
+      of their 見出し番号, and pools the folded lemma and the reading of every record, children
+      included, under that 見出し番号:</p>
+    <pre><code>for rec in db.records.values():
+    if rec.record_type in ("A", "B"):
+        db.senses[rec.midashi_no] = rec
+    forms[rec.midashi_no].add(fold(rec.lemma))
+    readings[rec.midashi_no].add(rec.yomi)</code></pre>
+    <p>For 見出し番号 80089, the three records 084043, 084044, 084045 run through this loop in
+      turn: the B record becomes <code>senses["80089"]</code>, and the set
+      <code>forms["80089"]</code> grows to <span class="ja">{あう, 会う, 遭う}</span> while
+      <code>readings["80089"]</code> stays <span class="ja">{あう}</span>. The second loop walks the
+      senses and inverts those sets, and files each sense under its part of speech and its four
+      group keys:</p>
+    <pre><code>for mid, rec in db.senses.items():
+    for f in db.forms[mid]:
+        by_form[f].append(mid)
+    for y in db.readings[mid]:
+        by_yomi[y].append(mid)
+    by_pos[rec.pos].append(mid)
+    groups["subpara"][rec.subpara_key].append(mid)
+    groups["para"][rec.para_key].append(mid)
+    groups["item"][rec.item_key].append(mid)
+    groups["middle"][rec.middle_key].append(mid)</code></pre>
+    <p>Because the senses are visited in file order and appended, every list in
+      <code>by_form</code>, <code>by_pos</code> and <code>groups</code> is in thesaurus order:
+      <code>by_form["会う"]</code> is <code>['69369', '80089']</code>, 2.1550 before 2.3520, and
+      <code>groups["para"][('2.3520', '01')]</code> runs from <span class="ja">あう</span> to
+      <span class="ja">再見する</span> by 語番号. The <code>defaultdict</code>s are converted to plain
+      dicts at the end (lines 242–245), so a lookup of a missing key raises
+      <code>KeyError</code> rather than inserting an empty list.</p>
+
+    <h3 id="c-lookup">8 · <code>lookup</code></h3>
+    <span class="ref">wlsp.py:248–257</span>
+    <pre><code>def lookup(self, form: str) -> list[str]:
+    """Find senses whose written form matches (readings are in ``by_yomi``).
+    ...
+    """
+    return self.by_form.get(fold(form), [])</code></pre>
+    <p>Fold the query the same way the index was folded, then one dictionary hit. The docstring
+      says exactly what the body does: a written-form lookup, with readings left to
+      <code>by_yomi</code>. An unknown spelling returns <code>[]</code>. Callers that want the
+      reading route read <code>by_yomi</code> themselves: <code>candidates.py</code> does, and
+      since 2026-11-05 it also tries a word's kana forms as written forms first, which is how
+      <span class="ja">珈琲</span> now reaches <span class="ja">コーヒー</span> (WLSP writes that
+      reading as <span class="ja">こおひい</span>, so <code>by_yomi</code> alone would miss it).
+      The missing-key default is a fresh empty list, so <code>db.lookup("珈琲")</code> is
+      <code>[]</code> and no index is modified.</p>
+
+    <h3 id="c-groups">9 · Neighbourhoods: <code>group_key</code>, <code>group_forms</code>, <code>neighbours</code>, <code>context_text</code></h3>
+    <span class="ref">wlsp.py:259–321</span>
+    <p><code>group_key</code> is a four-way switch from the level name to the matching property
+      (lines 269–274). <code>group_forms</code> unions the folded forms of every sense in the
+      group, the record's own included (lines 286–289); <code>neighbours</code> lists the bare
+      headwords of the other senses, in order, with an optional cap (lines 302–307):</p>
+    <pre><code>out = [
+    self.senses[mid].lemma
+    for mid in self.groups[level][self.group_key(rec, level)]
+    if mid != rec.midashi_no
+]
+return out[:limit] if limit else out</code></pre>
+    <pre class="data">>>> sorted(db.group_forms(r, "subpara"))
+['あう', '会う', '会わす', '会わせる', '会わせる・会わす', '遭う']
+>>> db.neighbours(r, "subpara")
+['会わせる・会わす']
+>>> db.neighbours(r, "para", 5)
+['会わせる・会わす', '会する', '出会う', '顔を合わせる', '相まみえる']
+>>> len(db.neighbours(r, "item")), len(db.neighbours(r, "middle"))
+(204, 1199)</pre>
+    <p>The two methods see different things. <code>group_forms</code> reads
+      <code>self.forms</code>, so it includes the children's split spellings
+      <span class="ja">会わせる</span> and <span class="ja">会わす</span>, folded; <code>neighbours</code>
+      reads <code>self.senses[mid].lemma</code>, the parent's headword, so it shows the joined
+      <span class="ja">会わせる・会わす</span> as one string. The counts 204 and 1,199 are the
+      group sizes (205 and 1,200) less the record itself.</p>
+    <p><code>context_text</code> then renders a sense as one line for embedding or prompting
+      (lines 319–321): the four labels, the lemma, every 小段落 neighbour, and up to
+      <code>para_limit</code> (default 20) 段落 neighbours, which repeats the 小段落 ones since the
+      段落 contains them:</p>
+    <pre><code>sub = "、".join(self.neighbours(rec, "subpara"))
+para = "、".join(self.neighbours(rec, "para", para_limit))
+return f"{rec.labels}: {rec.lemma}; 同義: {sub}; 関連: {para}"</code></pre>
+    <pre class="data">>>> print(db.context_text(r))
+用/活動/交わり/応接・送迎: あう; 同義: 会わせる・会わす; 関連: 会わせる・会わす、会する、出会う、顔を合わせる、相まみえる、遭遇する、出くわす・出っくわす、邂逅する、再会する、再見する
+>>> print(db.context_text(db.senses["49763"]))
+体/生産物/食料/飲料・たばこ: コーヒー; 同義: カフェ、アイスコーヒー、アメリカン、エスプレッソ、モカ; 関連: カフェ、アイスコーヒー、アメリカン、エスプレッソ、モカ、ウインナコーヒー、カフェオレ、カプチーノ、ココア</pre>
+    <p>The <span class="ja">コーヒー</span> line shows the lemma property doing its job on a
+      neighbour: the second sense in that 小段落 is printed in WLSP as
+      <span class="ja">カフェ［コーヒー］</span>, "café, in the sense of coffee", and reaches the
+      text as the bare <span class="ja">カフェ</span>. It also confirms what the empty lookup of
+      <span class="ja">珈琲</span> suggested: the kanji spelling is not a WLSP headword at all, so no
+      amount of folding would find it; the route from <span class="ja">珈琲</span> to this sense
+      runs through its kana form <span class="ja">コーヒー</span>, in <code>candidates.py</code>,
+      not through <code>wlsp.py</code>.</p>
+  </section>
+
+  <section id="quiz" class="quiz">
+    <h2>Quiz</h2>
+    <p>Six questions on the substance. Pick one per question; the reason appears either way.</p>
+    <div id="quizRoot"></div>
+  </section>
+
+  <section id="trust">
+    <h2>How much to trust this</h2>
+    <p>This page was written by an AI from the source file. That makes it fast to produce and
+      easy to refine, and fallible: a model can misread a line, invent a plausible detail, or
+      keep a number that has since changed. Treat the code as the source of truth and this page
+      as a guide to it.</p>
+    <ul>
+      <li>Every code claim carries a <code>wlsp.py:line</code> reference against commit
+        <code>b3e6896</code>; open the file and check. The mechanical checker
+        (<code>explainer_check.py</code>) confirmed that every identifier in the code blocks
+        exists in the source and every line reference is in range.</li>
+      <li>Every count (101,067 records; 96,051 senses; 81,216 forms; 68,704 readings; 32,195
+        小段落; 240 <span class="ja">＊</span> records; 54 script-only merges) comes from one
+        <code>Wlsp.load</code> of <code>data/WLSP/bunruidb.txt</code>, WLSP database ver 1.0.1 as
+        cloned from masayu-a/WLSP, on 2026-11-05. The <code>&gt;&gt;&gt;</code> blocks are the
+        queries that produced them; re-run them with <code>.venv/bin/python</code> from the repo
+        root. One repr was shortened by hand (the <code>[...240 items...]</code> lists) and long
+        ones were wrapped; nothing else was edited.</li>
+      <li>Every headword on this page (<span class="ja">会う</span>, <span class="ja">市立</span>,
+        <span class="ja">遍・返</span>, <span class="ja">生（なま）［〜の声］</span>,
+        <span class="ja">コレラ</span>, …) is a real record. The English glosses of the WLSP
+        category names are this page's, not NINJAL's.</li>
+      <li>One place where the page reads against the code rather than with it:
+        <code>WlspEntry.lemma</code> strips brackets from a column that, in this file, has
+        none. An observation, not a bug in the output; if it changes, this page is stale. (v0
+        also noted that the <code>lookup</code> docstring promised a reading fallback the body
+        did not implement; the docstring was corrected on 2026-11-05 and now matches.)</li>
+      <li>The quiz answers are derived from the code; where one disagrees with the code, the
+        code wins. Please report it.</li>
+    </ul>
+    <p>Guard the process, not just the page: regenerate from the real file when
+      <code>wlsp.py</code> changes, pin numbers to a real load, and have a second reader, a
+      person or another model, check it against the source before it is shared.</p>
+  </section>
+
+  <section id="glossary">
+    <h2>Glossary</h2>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Term</th><th>What it means here</th></tr></thead>
+      <tbody>
+        <tr><td><strong>分類語彙表 / WLSP</strong></td><td>NINJAL's Japanese thesaurus; the 2004
+          増補改訂版 database is <code>bunruidb.txt</code> ver 1.0.1, 101,067 records
+          (<code>kaisetsu.txt</code> says 101,070; IDs 024807, 024809 and 053757 are
+          absent).</td></tr>
+        <tr><td><strong>record</strong></td><td>one CSV line, keyed by its six-digit
+          <code>record_id</code> (084043). A <code>WlspEntry</code>.</td></tr>
+        <tr><td><strong>sense / 見出し番号</strong></td><td>a five-digit number shared by a parent
+          record and its children (80089); the unit the project maps wnja senses to. 96,051 of them.</td></tr>
+        <tr><td><strong>A / B / 1…6</strong></td><td>record types: a lone headword, a headword with
+          variants, and its variant children.</td></tr>
+        <tr><td><strong>分類番号</strong></td><td>the four-digit category code with its 類 prefix,
+          <code>2.3520</code>; read as 類 . 部門 中項目 分類項目.</td></tr>
+        <tr><td><strong>類 / 部門 / 中項目 / 分類項目</strong></td><td>the four nested levels the
+          code spells out: <span class="ja">用 / 活動 / 交わり / 応接・送迎</span>. Joined with
+          <code>/</code> into <code>labels</code>.</td></tr>
+        <tr><td><strong>段落 / 小段落 / 語番号</strong></td><td>paragraph, sub-paragraph and word
+          number within a 分類項目; the <code>-01-01-01</code> tail of the code. Same 小段落 means
+          close synonyms, same 段落 related senses.</td></tr>
+        <tr><td><strong>見出し / 見出し本体</strong></td><td>the headword as printed, with reading
+          hints <span class="ja">（）</span> and usage notes <span class="ja">［］</span>, and the same
+          with them removed.</td></tr>
+        <tr><td><strong>lemma</strong></td><td><code>WlspEntry.lemma</code>: the 見出し本体 passed
+          through <code>normalise_midashi</code>.</td></tr>
+        <tr><td><strong>fold</strong></td><td>NFKC plus katakana → hiragana; the key space of
+          <code>forms</code> and <code>by_form</code>.</td></tr>
+        <tr><td><strong>group / level</strong></td><td>the senses sharing a code prefix at one of
+          <code>subpara</code>, <code>para</code>, <code>item</code>, <code>middle</code>.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>Explainer for the wnja-bunrigoihyou project · generated from
+      <code>scripts/wlsp.py</code>. Format after
+      <a href="https://www.geoffreylitt.com/">Geoffrey Litt</a>'s
+      <a href="https://gist.github.com/geoffreylitt/a29df1b5f9865506e8952488eac3d524"><em>explain-diff</em></a>:
+      background, intuition, code, quiz.</p>
+    <p class="prov">Explainer v1, 2026-11-05, Claude Fable 5.1 · source
+      <code>scripts/wlsp.py</code> at commit <code>b3e6896</code> (2026-11-05) plus the
+      uncommitted working-tree change to the <code>lookup</code> docstring · data
+      分類語彙表増補改訂版データベース ver 1.0.1 (<code>data/WLSP/bunruidb.txt</code>, clone of
+      masayu-a/WLSP at e809cf8), loaded 2026-11-05 · regenerate when the code changes.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const QUESTIONS = [
+    {
+      q: "Which records does Wlsp.load keep in db.senses, and what do the others contribute?",
+      options: [
+        {t:"Records of type A and B; the numbered children add only written forms and readings to their parent's 見出し番号", ok:true},
+        {t:"Every record; db.senses is just db.records keyed by 見出し番号 instead of record ID", ok:false},
+        {t:"Only type A records, since B records are duplicated by their children", ok:false},
+        {t:"The numbered children, because each carries one unambiguous spelling", ok:false},
+      ],
+      why:"The first loop in load() does db.senses[rec.midashi_no] = rec only when rec.record_type is A or B, but adds fold(rec.lemma) and rec.yomi for every record. 93,463 A + 2,588 B = 96,051 senses; the 5,016 children only feed forms and readings."
+    },
+    {
+      q: "会う appears as sense 69369 at 2.1550-09-01-01 and as sense 80089 at 2.3520-01-01-01. At which level of the hierarchy do the two addresses first diverge?",
+      options: [
+        {t:"At the 部門, the digit after the point: 1 関係 versus 3 活動", ok:true},
+        {t:"At the 段落: both are in the 分類項目 for meeting, in paragraphs 09 and 01", ok:false},
+        {t:"At the 類: one is a noun and one a verb", ok:false},
+        {t:"They do not diverge; the same 分類番号 is listed twice with different 語番号", ok:false},
+      ],
+      why:"Both codes start with 2 (用, verbs). The next digit differs: 2.1550 is 部門 1 関係, 中項目 2.15 作用, item 合体・出会い・集合など; 2.3520 is 部門 3 活動, 中項目 2.35 交わり, item 応接・送迎. Their middle_keys, 2.15 and 2.35, are already different."
+    },
+    {
+      q: "db.lookup(\"アウ\") returns exactly what db.lookup(\"あう\") returns. Which step makes that true?",
+      options: [
+        {t:"fold() applies NFKC and then kata_to_hira to both the index keys and the query, so katakana and hiragana spellings collide", ok:true},
+        {t:"lookup() tries the written form and then falls back to by_yomi, where the reading あう is stored", ok:false},
+        {t:"The WLSP file lists アウ as a child record of the same 見出し番号", ok:false},
+        {t:"WlspEntry.lemma lowercases and transliterates the headword", ok:false},
+      ],
+      why:"by_form is keyed by fold(rec.lemma) and lookup() looks up fold(form). kata_to_hira shifts each katakana code point down by 0x60, so アウ becomes あう before the dictionary is consulted. lookup() never consults by_yomi (its docstring says so), and アウ is not a record in the file."
+    },
+    {
+      q: "db.lookup(\"会います\") returns []. Why?",
+      options: [
+        {t:"Matching is an exact dictionary hit on the folded written form; nothing in wlsp.py inflects, stems or consults by_yomi", ok:true},
+        {t:"Polite forms are stored in a separate index, by_polite, that lookup() does not search", ok:false},
+        {t:"fold() strips the ます ending but the stem 会い is not a WLSP headword", ok:false},
+        {t:"The B record 会う（会・遭） is skipped because its children own the forms", ok:false},
+      ],
+      why:"lookup() is one line: self.by_form.get(fold(form), []). fold() only normalises script and width. 会います is not a headword or child form in the file, so the key is absent and the default [] comes back."
+    },
+    {
+      q: "For the 2.3520 sense of 会う, neighbours(r, \"subpara\") gives ['会わせる・会わす'], but group_forms(r, \"subpara\") includes 会わせる and 会わす separately. Why do they differ?",
+      options: [
+        {t:"neighbours() returns self.senses[mid].lemma, the B parent's headword, while group_forms() unions self.forms[mid], which holds the folded forms of the children too", ok:true},
+        {t:"group_forms() splits every lemma on the ・ separator before returning it", ok:false},
+        {t:"neighbours() has a default limit of 1 that truncates the list", ok:false},
+        {t:"They read different group levels: neighbours() uses the 小段落, group_forms() the 段落", ok:false},
+      ],
+      why:"Sense 80090 is the B record 会わせる・会わす with children 会わせる and 会わす. forms['80090'] therefore holds three folded strings, and group_forms() unions them. neighbours() only ever looks at the parent's lemma, so it shows the joined headword. The limit defaults to 0, meaning no cap."
+    },
+    {
+      q: "db.by_form[\"*\"] holds 240 見出し番号, more than any real word. Where do they come from?",
+      options: [
+        {t:"The 240 ＊ divider records (語番号 99) are type A, so load() treats them as senses, and NFKC folds the full-width ＊ to ASCII *", ok:true},
+        {t:"read_wlsp() writes * for any record whose 見出し本体 column is empty", ok:false},
+        {t:"Headwords that failed Shift_JIS decoding are replaced by * by the csv reader", ok:false},
+        {t:"fold() turns every bracketed usage note into a single *", ok:false},
+      ],
+      why:"The WLSP file marks a semantic break inside a 分類項目 with a record whose 見出し, 本体 and 読み are all ＊ and whose 小段落 and 語番号 are 99. They are ordinary type A rows, so nothing in load() excludes them; fold() runs NFKC, which maps U+FF0A ＊ to U+002A *, and all 240 land on one key."
+    },
+  ];
+
+  function shuffle(a){
+    for(let i=a.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  const root = document.getElementById('quizRoot');
+  QUESTIONS.forEach((item, qi)=>{
+    const q = document.createElement('div'); q.className='q';
+    const h = document.createElement('p'); h.className='qhead';
+    const tag = document.createElement('span'); tag.textContent = 'Q'+(qi+1);
+    h.appendChild(tag); h.appendChild(document.createTextNode(item.q));
+    q.appendChild(h);
+    const ul = document.createElement('ul');
+    const right = item.options.find(o=>o.ok).t;
+    shuffle(item.options.slice()).forEach(opt=>{
+      const li=document.createElement('li');
+      const b=document.createElement('button');
+      b.className='opt'; b.type='button'; b.textContent=opt.t;
+      b.addEventListener('click',()=>{
+        if(q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        b.classList.add(opt.ok?'correct':'wrong');
+        ul.querySelectorAll('button').forEach(x=>{
+          x.disabled=true;
+          if(x.textContent===right) x.classList.add('correct');
+        });
+      });
+      li.appendChild(b); ul.appendChild(li);
+    });
+    q.appendChild(ul);
+    const why=document.createElement('p'); why.className='why';
+    const lab=document.createElement('strong'); lab.textContent='Why: ';
+    why.appendChild(lab); why.appendChild(document.createTextNode(item.why));
+    q.appendChild(why);
+    root.appendChild(q);
+  });
+})();
+</script>

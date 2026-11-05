@@ -1,0 +1,930 @@
+<title>Candidate Pairs Explainer</title>
+<style>
+  /* Layout: one reading column, wide tables scroll in their own box. */
+  :root{
+    --ground:#f7f5f1; --surface:#ffffff; --ink:#1f2326; --muted:#5d6468;
+    --accent:#a9442a; --accent-soft:#f3e4de; --hair:#e4e0d9; --code-bg:#f1eee8;
+    --k-lemma:#2f7d4f; --k-form:#2b6cb0; --k-suru:#a9711a; --k-yomi:#7b4fa6;
+    --g-exact:#2f7d4f; --g-near:#a9711a; --g-other:#b0453f; --g-decoy:#6b7478;
+    --serif:"Palatino Linotype","Palatino","Book Antiqua",Georgia,"Hiragino Mincho ProN","Yu Mincho","Noto Serif CJK JP",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans CJK JP",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#141719; --surface:#1c2124; --ink:#e9e6e0; --muted:#9aa3a6;
+      --accent:#e3875f; --accent-soft:#3a2a23; --hair:#2b3236; --code-bg:#181d20;
+      --k-lemma:#5bbd82; --k-form:#6fa8e6; --k-suru:#d7a24e; --k-yomi:#b48ad8;
+      --g-exact:#5bbd82; --g-near:#d7a24e; --g-other:#e07a72; --g-decoy:#9aa3a6;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#141719; --surface:#1c2124; --ink:#e9e6e0; --muted:#9aa3a6;
+    --accent:#e3875f; --accent-soft:#3a2a23; --hair:#2b3236; --code-bg:#181d20;
+    --k-lemma:#5bbd82; --k-form:#6fa8e6; --k-suru:#d7a24e; --k-yomi:#b48ad8;
+    --g-exact:#5bbd82; --g-near:#d7a24e; --g-other:#e07a72; --g-decoy:#9aa3a6;
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--serif);
+    line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .wrap{max-width:48rem;margin:0 auto;padding-block:3rem 5rem;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+  .eyebrow{font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
+  h1{font-size:2.1rem;line-height:1.15;margin:0 0 .4rem;text-wrap:balance;font-weight:600}
+  .lede{font-size:1.12rem;color:var(--muted);margin:0 0 1.4rem;text-wrap:balance}
+  .meta{font-family:var(--mono);font-size:.78rem;color:var(--muted);border-top:1px solid var(--hair);
+    border-bottom:1px solid var(--hair);padding:.6rem 0;display:flex;gap:1.2rem;flex-wrap:wrap}
+
+  nav.toc{margin:2rem 0 2.5rem;font-family:var(--sans);font-size:.9rem}
+  nav.toc ol{list-style:none;counter-reset:s;padding:0;margin:0;display:grid;gap:.3rem}
+  nav.toc li{counter-increment:s}
+  nav.toc a{color:var(--ink);text-decoration:none;display:flex;gap:.6rem;padding:.3rem .5rem;border-radius:6px}
+  nav.toc a::before{content:counter(s,decimal-leading-zero);color:var(--accent);
+    font-variant-numeric:tabular-nums;font-weight:600}
+  nav.toc a:hover{background:var(--accent-soft)}
+
+  section{margin:3rem 0}
+  h2{font-size:1.5rem;margin:0 0 .8rem;font-weight:600;padding-bottom:.3rem;border-bottom:2px solid var(--accent-soft)}
+  h3{font-size:1.06rem;font-family:var(--sans);font-weight:600;margin:1.6rem 0 .4rem}
+  p{margin:.8rem 0}
+  a{color:var(--accent)}
+  strong{font-weight:600}
+  .ja{font-family:var(--sans)}
+  .en{color:var(--muted)}
+
+  code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:.1em .35em;border-radius:4px}
+  pre{font-family:var(--mono);font-size:.8rem;line-height:1.5;background:var(--code-bg);
+    border:1px solid var(--hair);border-radius:10px;padding:1rem 1.1rem;overflow-x:auto;white-space:pre;margin:1rem 0}
+  pre code{background:none;padding:0;font-size:1em}
+  pre.data{background:var(--surface)}
+  pre.query{border-left:3px solid var(--accent)}
+  .ref{font-family:var(--mono);font-size:.76rem;color:var(--muted);display:block;margin:-.4rem 0 .9rem}
+
+  .chip{font-family:var(--mono);font-size:.72rem;font-weight:600;padding:.1em .5em;border-radius:999px;
+    white-space:nowrap;border:1px solid currentColor}
+  .k-lemma{color:var(--k-lemma)} .k-form{color:var(--k-form)} .k-suru{color:var(--k-suru)} .k-yomi{color:var(--k-yomi)}
+  .g-exact{color:var(--g-exact)} .g-near{color:var(--g-near)} .g-other{color:var(--g-other)} .g-decoy{color:var(--g-decoy)}
+
+  table.toy{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.85rem;font-family:var(--sans)}
+  table.toy th,table.toy td{text-align:left;padding:.45rem .55rem;border-bottom:1px solid var(--hair);vertical-align:top}
+  table.toy th{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  table.toy td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  table.toy td.hi{background:var(--accent-soft)}
+  .wrap-x{overflow-x:auto;min-width:0}
+
+  /* overlap diagram */
+  .ovl{display:grid;grid-template-columns:1fr auto 1fr;gap:.8rem;align-items:center;margin:1.4rem 0;
+    font-family:var(--sans);font-size:.82rem}
+  .ovl .side{background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:.7rem .8rem;min-width:0}
+  .ovl .side b{display:block;color:var(--accent);font-size:.9rem;margin-bottom:.3rem}
+  .ovl .side ul{margin:0;padding-left:1.1rem}
+  .ovl .side li{margin:.15rem 0}
+  .ovl .side small{color:var(--muted);font-family:var(--mono);font-size:.7rem}
+  .ovl .mid{text-align:center;color:var(--muted);font-family:var(--mono);font-size:.74rem;line-height:1.4}
+  .ovl .mid b{display:block;font-size:1.4rem;color:var(--accent);font-weight:400}
+  .nest{display:grid;gap:.35rem}
+  .nest div{border:1px solid var(--hair);border-radius:8px;padding:.3rem .55rem}
+  .nest div div{margin-top:.35rem}
+  @media (max-width:560px){.ovl{grid-template-columns:1fr}.ovl .mid b{transform:rotate(90deg)}}
+
+  .callout{background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;
+    padding:.8rem 1rem;margin:1.2rem 0}
+  .callout p{margin:.3rem 0}
+  .caveat{font-family:var(--sans);font-size:.86rem;line-height:1.45;color:var(--ink);
+    background:color-mix(in srgb,var(--g-near) 12%,transparent);
+    border:1px solid color-mix(in srgb,var(--g-near) 45%,transparent);
+    border-radius:8px;padding:.7rem .9rem;margin:1.2rem 0}
+  .caveat b{color:var(--g-near)}
+
+  .quiz .q{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:1.1rem 1.2rem;margin:1rem 0}
+  .quiz .qhead{font-weight:600;margin:0 0 .7rem;font-family:var(--sans);font-size:1rem}
+  .quiz .qhead span{color:var(--accent);font-family:var(--mono);margin-right:.5rem}
+  .quiz ul{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
+  .quiz button.opt{width:100%;text-align:left;font:inherit;font-family:var(--sans);font-size:.9rem;
+    background:var(--ground);color:var(--ink);cursor:pointer;border:1px solid var(--hair);border-radius:8px;
+    padding:.6rem .8rem;transition:border-color .15s,background .15s}
+  .quiz button.opt:hover{border-color:var(--accent)}
+  .quiz button.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .quiz button.opt.correct{border-color:var(--g-exact);background:color-mix(in srgb,var(--g-exact) 14%,transparent)}
+  .quiz button.opt.wrong{border-color:var(--g-other);background:color-mix(in srgb,var(--g-other) 12%,transparent)}
+  .quiz button.opt[disabled]{cursor:default}
+  .quiz .why{font-size:.88rem;color:var(--muted);margin:.7rem 0 0;padding-left:.6rem;border-left:2px solid var(--hair);display:none}
+  .quiz .q.answered .why{display:block}
+
+  footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--hair);font-family:var(--sans);font-size:.82rem;color:var(--muted)}
+  .prov{font-family:var(--mono);font-size:.74rem;line-height:1.55;margin-top:.7rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">wnja-bunrigoihyou · Code explainer</p>
+    <h1>Pairing Japanese WordNet senses with 分類語彙表 records</h1>
+    <p class="lede">How <code>scripts/candidates.py</code> finds, for every sense in the
+      Japanese WordNet, the WLSP headwords it could mean, and measures how well the
+      two neighbourhoods overlap.</p>
+    <div class="meta">
+      <span>scripts/candidates.py</span><span>461 lines</span>
+      <span>uses: wn, polars, scripts/wlsp.py</span>
+      <span>run: uv run scripts/candidates.py -o build/candidates.parquet</span>
+    </div>
+    <p class="caveat"><b>Generated by an AI.</b> This page was written from the code
+      and can be wrong: a misread line, an invented detail, a stale number. Trust the
+      code, not this page: check anything that matters against
+      <code>scripts/candidates.py</code>, and run it. Every count and example here
+      was read from <code>build/candidates.parquet</code> (168,540 rows) and the
+      <code>wn</code> database on 2026-11-05; the query snippets that produced them
+      are on the page. See <a href="#trust">How much to trust this</a>.</p>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#background">Background: two sense inventories</a></li>
+      <li><a href="#intuition">Intuition: neighbourhoods that overlap</a></li>
+      <li><a href="#code">Code: how the script runs</a></li>
+      <li><a href="#quiz">Quiz</a></li>
+      <li><a href="#trust">How much to trust this</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <p>The project links two Japanese sense inventories that were built on different
+      principles. The script's job is the first step: list every pairing that could be
+      right, and attach evidence, so that <code>score.py</code> can decide later.</p>
+
+    <h3>The Japanese WordNet (wnja 2.1)</h3>
+    <p>A <strong>wordnet</strong> groups words into <em>synsets</em>, sets of synonyms
+      sharing one meaning. wnja 2.1 has 90,696 words, 148,679 senses and 67,509 synsets
+      (<code>len(ja.words())</code> and friends). A <strong>word</strong> is a lemma with
+      a part of speech and some written forms; a <strong>sense</strong> is one word in
+      one synset. The verb <span class="ja">会う</span> is one word
+      (<code>wnja-v-13725</code>) with nine senses:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>sense</th><th>synset members (first few)</th><th>Japanese gloss</th></tr></thead>
+      <tbody>
+        <tr><td class="num">wnja-00669762-v-13725</td><td class="ja">受ける, 会う, 服する, 聞き入れる</td><td class="ja">受け入れる、または受ける、しばしば嫌々に</td></tr>
+        <tr><td class="num">wnja-02023107-v-13725</td><td class="ja">会遇, 出会, 逢着, 遭遇, 出会う, 出くわす …</td><td class="ja">一緒になる</td></tr>
+        <tr><td class="num">wnja-02486932-v-13725</td><td class="ja">集合, 集まる, 会う, 面会, 参集, 会合 …</td><td class="ja">社交的に、またはある特定の目的のために集まる</td></tr>
+        <tr><td class="num">wnja-02488304-v-13725</td><td class="ja">掛かる, 会う, 面会, 対面, 相見 …</td><td class="ja">専門的または商業目的のために会いに行く</td></tr>
+        <tr><td class="num">wnja-02488488-v-13725</td><td class="ja">会う, 対面, 相見, 会す …</td><td class="ja">社交目的の訪問のために会いに行く</td></tr>
+        <tr><td class="num">wnja-02710402-v-13725</td><td class="ja">集まる, 会う, 集る</td><td class="ja">近接しているか、または一緒になる</td></tr>
+        <tr><td class="num">wnja-02730326-v-13725</td><td class="ja">衝突, 遭遇, 会う, ぶち当たる, 当たる …</td><td class="ja">に悩まされる</td></tr>
+        <tr><td class="num">wnja-02739480-v-13725</td><td class="ja">会う, ぶっ付かる, 当たる …</td><td class="ja">反応としての経験</td></tr>
+        <tr><td class="num">wnja-02596113-v-13725</td><td class="ja">会う</td><td class="ja">知り合いになる</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The word also carries written forms: <code>w.forms()</code> for
+      <span class="ja">会う</span> is <code>['会う', 'アウ', '逢う', '遇う', '遭う', 'あう']</code>.
+      Kanji variants and kana readings are mixed in that list, and the script has to
+      treat them differently (see <a href="#forms">word forms</a>).</p>
+    <p>Each wnja synset carries an <strong>ILI</strong> (interlingual index) id such as
+      <code>i31856</code>, shared with the English wordnet <code>omw-en:1.4</code>.
+      wnja itself has few hierarchy links, so the script fetches hypernyms and
+      hyponyms from the English side through the ILI. For <span class="ja">先生</span>
+      "teacher" (<code>wnja-10694258-n</code>, ILI <code>i93557</code>) the English
+      hypernym chain, with the wnja members found at each step, is:</p>
+    <pre class="data">omw-en-10694258-n  teacher, instructor        教師, 師範, 指南役, 指南番, 先生
+omw-en-10045713-n  educator, pedagogue        教育者, 教育家
+omw-en-10480253-n  professional               プロ, スペシャリスト, 本職
+omw-en-09605289-n  adult, grownup             成人, アダルト, 大人
+omw-en-00007846-n  person, individual         人, 人間, 個人
+omw-en-00004475-n  organism, being            生き物, 有機体, 生物
+   …
+omw-en-00001740-n  entity                     実体</pre>
+    <p>Its hyponyms include <span class="ja">家庭教師</span> "tutor",
+      <span class="ja">教諭</span> "schoolteacher", <span class="ja">宣教師</span>
+      "missionary" and <span class="ja">楽師</span> "music teacher"; its siblings
+      (other hyponyms of <em>educator</em>) include <span class="ja">講師</span>
+      "lecturer", <span class="ja">校長</span> "principal", and, because the English
+      wordnet hangs named people under <em>educator</em>, <span class="ja">コメニュウス</span>
+      and <span class="ja">カーネギー</span>. The script uses only one hop up and one
+      hop down, not the whole chain.</p>
+
+    <h3>分類語彙表 (WLSP)</h3>
+    <p>The <em>Word List by Semantic Principles</em> is a thesaurus: 101,067 records
+      arranged by meaning, not by spelling. A headword that has several spellings or
+      readings is a parent record of type <code>B</code> followed by numbered children
+      that share its <strong>見出し番号</strong>; <code>wlsp.py</code> treats the 見出し番号
+      as the <em>sense</em> (96,051 of them) and merges the children's forms into it
+      (<code>wlsp.py:220–223</code>). The entry <code>80089</code> is three records:</p>
+    <pre class="data">record_id  type  midashi          yomi
+084043     B     あう（会・遭）     あう      ← canonical entry, lemma "あう"
+084044     1     会う              あう
+084045     2     遭う              あう
+→ db.senses["80089"].lemma == "あう";  db.forms["80089"] == {"あう", "会う", "遭う"}</pre>
+    <p>Every record has a position code, <code>類.部門中項目分類項目-段落-小段落-語番号</code>
+      (<code>wlsp.py:66–69</code>). For <code>80089</code> it is <code>2.3520-01-01-01</code>:
+      類 <code>2</code> is 用 (verbs), <code>2.35</code> the 中項目 交わり, <code>2.3520</code>
+      the 分類項目 応接・送迎, then 段落 01, 小段落 01, word 01. The first digit maps to a
+      wordnet part of speech by <code>RUI_TO_POS</code> (<code>wlsp.py:45</code>): 1 → n,
+      2 → v, 3 → a, 4 → r. The code gives four nested groups the script will compare
+      against, from tight to loose; here with the group sizes for <code>80089</code>:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>level</th><th>key (wlsp.py)</th><th>group of 80089</th><th>members</th></tr></thead>
+      <tbody>
+        <tr><td><strong>subpara</strong> 小段落</td><td class="num">subpara_key :96–99</td><td class="num">(2.3520, 01, 01)</td>
+          <td>2: <span class="ja">あう, 会わせる・会わす</span></td></tr>
+        <tr><td><strong>para</strong> 段落</td><td class="num">para_key :91–94</td><td class="num">(2.3520, 01)</td>
+          <td>11: <span class="ja">… 会する, 出会う, 顔を合わせる, 相まみえる, 遭遇する, 出くわす, 邂逅する, 再会する, 再見する</span></td></tr>
+        <tr><td><strong>item</strong> 分類項目</td><td class="num">item_key :81–84</td><td class="num">2.3520</td><td>205 senses (応接・送迎)</td></tr>
+        <tr><td><strong>middle</strong> 中項目</td><td class="num">middle_key :86–89</td><td class="num">2.35</td><td>1,200 senses (交わり)</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Over the whole database there are 32,195 小段落, 9,909 段落, 895 分類項目 and 95
+      中項目 (<code>len(db.groups[level])</code>). A 小段落 holds close synonyms, a 段落
+      related senses, a 分類項目 a topic.</p>
+
+    <h3>The problem: polysemy on both sides</h3>
+    <p>WLSP lists <span class="ja">あう</span> three times: <code>69369</code>
+      (<code>2.1550</code> 合体・出会い・集合, "come together"), <code>80089</code>
+      (<code>2.3520</code> 応接・送迎, "meet someone") and, spelled
+      <span class="ja">遭う</span>, <code>77441</code> (<code>2.3310</code> 人生・禍福,
+      "meet with misfortune"). wnja has nine senses. The script does not pick: it
+      emits all 9 × 3 = 27 pairs for <span class="ja">会う</span> and leaves the choice
+      to the features. Across wnja that gives 168,540 pairs for 96,223 senses of 47,112
+      words (of 90,696; the rest match no WLSP headword, counted by running
+      <code>find_candidates</code> over <code>ja.words()</code>), against 47,235
+      distinct WLSP senses. 60,426 of the pairs are the only candidate of their sense.</p>
+
+    <h3>The dev set</h3>
+    <p><code>dev/devset.tsv</code> (734 rows, from <code>build_devset.py</code>) links
+      WLSP records to wnja senses through the TUFS basic vocabulary. Only rows with a
+      <code>wnja_sense</code> and a status other than <code>hyponym</code> are used as
+      gold (<code>candidates.py:245</code>): 599 <code>sense</code> rows become 597
+      distinct gold senses, two of which have two gold records. One WLSP record may be
+      gold for several wnja senses: <code>35016</code> <span class="ja">休み</span> "rest"
+      is the gold of three.</p>
+    <pre class="data">$ grep -P '\t(休み|赤)\t' dev/devset.tsv | cut -f3,4,5,7,11,14,16,19
+35016  1.3320-12-01-01  体/活動/生活/労働・作業・休暇  休み  rest  wnja-15274074-n  wnja-15274074-n-19318  sense
+35016  1.3320-12-01-01  体/活動/生活/労働・作業・休暇  休み  rest  wnja-15183428-n  wnja-15183428-n-19318  sense
+35016  1.3320-12-01-01  体/活動/生活/労働・作業・休暇  休み  rest  wnja-15137890-n  wnja-15137890-n-19318  sense
+55770  1.5020-07-01-01  体/自然/自然/色                赤    red   wnja-04962784-n  wnja-04962784-n-44769  sense</pre>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <p>A wnja sense and a WLSP sense are the same meaning when the words <em>around</em>
+      them agree. Around the synset: its other members, its hypernyms, hyponyms and
+      siblings (from English via ILI), and its similar and antonym synsets. Around the
+      WLSP record: the four nested groups. Every feature is the size of one
+      intersection.</p>
+
+    <div class="ovl">
+      <div class="side">
+        <b>Synset neighbourhood</b>
+        <ul>
+          <li>syn <small>other members</small></li>
+          <li>hyper <small>hypernyms, via ILI</small></li>
+          <li>hypo <small>hyponyms, via ILI</small></li>
+          <li>sib <small>co-hyponyms, via ILI</small></li>
+          <li>sim <small>similar, also (wnja)</small></li>
+          <li>ant <small>antonym (wnja)</small></li>
+        </ul>
+      </div>
+      <div class="mid"><b>∩</b>ov_&lt;rel&gt;_&lt;level&gt;<br>16 pairs</div>
+      <div class="side">
+        <b>WLSP groups of the record</b>
+        <div class="nest">
+          <div>middle 中項目 <small>2.35</small>
+            <div>item 分類項目 <small>2.3520</small>
+              <div>para 段落 <small>2.3520-01</small>
+                <div>subpara 小段落 <small>2.3520-01-01</small></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p>Not every relation is crossed with every level: synonyms are checked down to the
+      小段落 but hypernyms only from the 段落 up, because a hypernym is related, not
+      synonymous (<code>OVERLAPS</code>, <code>candidates.py:47–64</code>). All strings
+      are compared after <code>fold()</code>: NFKC and katakana → hiragana
+      (<code>wlsp.py:138–147</code>), so <span class="ja">レスト</span> and
+      <span class="ja">れすと</span> count as one.</p>
+
+    <h3>By hand: <span class="ja">休み</span> "respite"</h3>
+    <p><code>wnja-15274074-n-19318</code> (<span class="ja">息抜きのための休止</span>;
+      English <em>respite, rest, relief</em>) has four WLSP candidates, all spelled
+      <span class="ja">休み</span>. Its neighbourhood: 17 other members
+      (<span class="ja">休息, 休憩, 休止, 休養, 息抜き, 憩い, 中休み, お休み …</span>),
+      45 hypernym forms (from <em>pause, intermission, break</em>:
+      <span class="ja">一休み, 一息, 中入り, 間 …</span>), 6 hyponym forms (from
+      <em>breather</em>: <span class="ja">一息, 小休止, 息継ぎ …</span>) and 6 siblings
+      (<em>halftime, time-out, lull</em>). Which of those appear in each candidate's
+      段落?</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>candidate</th><th>段落 neighbours (first few)</th><th>syn ∩ para</th><th>hyper ∩ para</th><th>hypo ∩ para</th><th>gold_rel</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="num">35016<br>1.3320-12-01-01<br>労働・作業・休暇</td>
+          <td class="ja">お休み, 安息, 憩い, 休憩, 息継ぎ, 一息, 息抜き, 骨休め, 命の洗濯, 少憩, 一休み, 休止, 小休止, コーヒーブレーク, 一服, 中休み, 中入り, 昼休み</td>
+          <td class="hi">6 <span class="ja">お休み, 中休み, 休憩, 休止, 息抜き, 憩い</span></td>
+          <td class="hi">3 <span class="ja">一休み, 一息, 中入り</span></td>
+          <td class="hi">3 <span class="ja">一息, 小休止, 息継ぎ</span></td>
+          <td><span class="chip g-exact">exact</span></td>
+        </tr>
+        <tr>
+          <td class="num">08201<br>1.1633-03-05-02<br>日</td>
+          <td class="ja">平日, 例日, 定日, 予定日, 期日, 休日, 半ドン, 安息日, 定休日, 公休日, ホリデー, 連休, 振替休日</td>
+          <td>0</td><td>0 <span class="en">(6 at 中項目)</span></td><td>0 <span class="en">(1 at 中項目)</span></td>
+          <td><span class="chip g-other">other</span></td>
+        </tr>
+        <tr>
+          <td class="num">23216<br>1.3003-07-02-01<br>飢渇・酔い・疲労・睡眠など</td>
+          <td class="ja">眠気, 眠たさ, 睡魔, 眠り, 睡眠, ねんね, まどろみ, 仮眠, うたた寝, 居眠り, 昼寝</td>
+          <td>0</td><td>0</td><td>0</td>
+          <td><span class="chip g-other">other</span></td>
+        </tr>
+        <tr>
+          <td class="num">39170<br>1.3511-01-02-01<br>出欠</td>
+          <td class="ja">出欠, 出席, 欠席, 長期欠席, 病欠, 欠課, 参加, 不参加, 出場, 欠場, 参列</td>
+          <td>0</td><td>0</td><td>0</td>
+          <td><span class="chip g-other">other</span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The gold record is the only one whose 段落 contains members, hypernyms
+      <em>and</em> hyponyms of the synset. <span class="ja">休み</span> as a day off
+      (<code>08201</code>) shares nothing at the 段落, and only loose words
+      (<span class="ja">間, 一息</span>) at the 中項目 level of 2,345 senses. The other
+      two senses, sleep and absence, share nothing at all.</p>
+
+    <h3>When synonyms are not enough: <span class="ja">先生</span></h3>
+    <p>For <code>wnja-10694258-n-68085</code> "teacher", two of the three candidates
+      share members. <code>19541</code> (<code>1.2440</code> 相対的地位) sits with
+      <span class="ja">師, 師匠, 師範, 老師</span>: four members of the synset, so
+      <code>ov_syn_para</code> = 4. The gold <code>18152</code> (<code>1.2410</code>
+      専門的・技術的職業) has <code>ov_syn_para</code> = 5 (<span class="ja">教師, 教員,
+      教官, 指導員, インストラクター</span>), but also the hypernym
+      <span class="ja">教育家, 教育者</span> (<code>ov_hyper_para</code> = 2), the hyponyms
+      <span class="ja">家庭教師, 教諭</span> (<code>ov_hypo_para</code> = 2) and the sibling
+      <span class="ja">講師</span> (<code>ov_sib_para</code> = 1). Hierarchy is what tells
+      the occupation from the honorific.</p>
+
+    <h3>Reading the feature vector</h3>
+    <p>Each row carries 16 overlap counts, six neighbourhood sizes
+      (<code>n_syn</code> … <code>n_ant</code>) and four group sizes
+      (<code>size_subpara</code> … <code>size_middle</code>), so a scorer can judge
+      "3 of 45" against "3 of 6". The sizes are per synset or per record and do not
+      change across a sense's candidates; the overlaps do.</p>
+  </section>
+
+  <section id="code">
+    <h2>Code</h2>
+    <p>Nine parts, in the order they run. <code>build()</code> is the loop; everything
+      before it is a helper it calls.</p>
+
+    <h3>1 · Constants</h3>
+    <span class="ref">candidates.py:44–77</span>
+    <pre><code>LEVELS = ("subpara", "para", "item", "middle")
+RELATIONS = ("syn", "hyper", "hypo", "sib", "sim", "ant")
+OVERLAPS = (
+    ("syn", "subpara"), ("syn", "para"), ("syn", "item"),
+    ("hyper", "para"), ("hyper", "item"), ("hyper", "middle"),
+    ("hypo", "para"), ("hypo", "item"), ("hypo", "middle"),
+    ("sib", "para"), ("sib", "item"),
+    ("sim", "subpara"), ("sim", "para"), ("sim", "item"),
+    ("ant", "para"), ("ant", "item"),
+)</code></pre>
+    <p>Sixteen (relation, level) pairs become the sixteen <code>ov_*</code> columns.
+      <code>ID_COLUMNS</code> (<code>:65–77</code>) names the identifying columns; it is
+      not used inside this file (<code>score.py</code> repeats the same tuple to
+      separate ids from features).</p>
+
+    <h3 id="forms">2 · Written forms and readings</h3>
+    <span class="ref">candidates.py:80–125 · wlsp.py:138–147</span>
+    <p>Three small functions decide what counts as a <em>spelling</em> of a wnja word
+      and what counts as a <em>reading</em>.</p>
+    <pre><code>def is_kana(text: str) -> bool:
+    return bool(text) and all("ぁ" <= c <= "ゟ" or "゠" <= c <= "ヿ" or c == "ー" for c in text)
+
+def word_forms(word: wn.Word) -> set[str]:
+    lemma = word.lemma()
+    out = {fold(lemma)}
+    out.update(fold(f) for f in word.forms() if not is_kana(f) or is_kana(lemma))
+    return out
+
+def kana_forms(word: wn.Word) -> set[str]:
+    return {fold(f) for f in [word.lemma(), *word.forms()] if is_kana(f)}</code></pre>
+    <p>Real inputs and outputs:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>word</th><th>w.forms()</th><th>word_forms</th><th>kana_forms</th></tr></thead>
+      <tbody>
+        <tr><td class="ja">会う <span class="en">wnja-v-13725</span></td><td class="ja">会う, アウ, 逢う, 遇う, 遭う, あう</td>
+          <td class="ja">{会う, 逢う, 遇う, 遭う}</td><td class="ja">{あう}</td></tr>
+        <tr><td class="ja">上げる <span class="en">wnja-v-4974</span></td><td class="ja">揚げる, アゲル, 挙げる, 上げる, あげる</td>
+          <td class="ja">{揚げる, 上げる, 挙げる}</td><td class="ja">{あげる}</td></tr>
+        <tr><td class="ja">丁度 <span class="en">wnja-r-12</span></td><td class="ja">丁度, チョウド, 恰度, ちょうど</td>
+          <td class="ja">{丁度, 恰度}</td><td class="ja">{ちょうど}</td></tr>
+        <tr><td class="ja">ドウゾ <span class="en">wnja-r-1999</span></td><td class="ja">ドウゾ, どうぞ</td>
+          <td class="ja">{どうぞ}</td><td class="ja">{どうぞ}</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The condition on line 112 is the subtle one: a kana form is kept as a
+      <em>spelling</em> only when the lemma itself is kana (<span class="ja">ドウゾ</span>),
+      otherwise it is a reading. <code>fold</code> explains why <span class="ja">アウ</span>
+      and <span class="ja">あう</span> collapse: <code>fold("コーヒー")</code> is
+      <code>"こーひー"</code>, <code>fold("ﾊﾞｽ")</code> is <code>"ばす"</code>.
+      Note that <code>is_kana("ー")</code> is <code>True</code> and
+      <code>is_kana("")</code> is <code>False</code>.</p>
+
+    <h3>3 · Synset contexts</h3>
+    <span class="ref">candidates.py:128–176</span>
+    <p>One pass over all 67,509 wnja synsets collects, per synset, the folded forms of
+      its members and of six kinds of related synset into a <code>SynsetContext</code>
+      (<code>:92–97</code>). The first loop (<code>:144–150</code>) also builds
+      <code>by_ili</code>, ILI → wnja synset id, which is how English neighbours are
+      brought back into Japanese:</p>
+    <pre><code>def ja_forms(en_synsets: list[wn.Synset]) -> set[str]:
+    out: set[str] = set()
+    for es in en_synsets:
+        jid = by_ili.get(es.ili or "")
+        if jid:
+            out |= contexts[jid].forms
+    return out</code></pre>
+    <p>Then, per synset (<code>:160–175</code>): <code>similar</code> and <code>also</code>
+      links feed <code>sim</code>, <code>antonym</code> feeds <code>ant</code>, both read
+      from wnja itself. If the synset has an ILI, the matching omw-en synset supplies
+      <code>hypernyms()</code> plus <code>instance_hypernym</code> → <code>hyper</code>,
+      <code>hyponyms()</code> → <code>hypo</code>, and the other hyponyms of each
+      hypernym → <code>sib</code>. Finally the synset's own forms are removed from
+      <code>hyper</code>, <code>hypo</code> and <code>sib</code> (<code>:174–175</code>),
+      so a word that is both a member and a hyponym is not counted twice.</p>
+    <p>For <span class="ja">先生</span> <code>wnja-10694258-n</code> this gives
+      <code>n_hyper</code> = 2, <code>n_hypo</code> = 17, <code>n_sib</code> = 32,
+      <code>n_sim</code> = <code>n_ant</code> = 0. Synsets with no ILI (2,231 rows in
+      the table have <code>ili == ""</code>) get no hierarchy at all. Only 18,821 rows
+      have any <code>sim</code> forms and 17,362 any <code>ant</code> forms: those
+      links are sparse in wnja.</p>
+
+    <h3>4 · Finding candidates</h3>
+    <span class="ref">candidates.py:179–204</span>
+    <pre><code>def find_candidates(word: wn.Word, db: Wlsp) -> dict[str, str]:
+    found: dict[str, str] = {}
+    lemma = fold(word.lemma())
+    for mid in db.by_form.get(lemma, []):
+        found[mid] = "lemma"
+    for f in word_forms(word) - {lemma}:
+        for mid in db.by_form.get(f, []):
+            found.setdefault(mid, "form")
+    if word.pos == "v" and lemma.endswith("する"):
+        for mid in db.by_form.get(lemma[:-2], []):
+            found.setdefault(mid, "suru")
+    if not found:
+        for y in kana_forms(word):
+            for mid in db.by_yomi.get(y, []):
+                found.setdefault(mid, "yomi")
+    return found</code></pre>
+    <p>Four match types, tried in order; <code>setdefault</code> keeps the first, so a
+      record reached by the lemma stays <span class="chip k-lemma">lemma</span> even if
+      a form reaches it too. The reading fallback runs only when nothing else matched.
+      Counts over the whole table: <span class="chip k-lemma">lemma</span> 114,567 rows,
+      <span class="chip k-yomi">yomi</span> 43,357, <span class="chip k-form">form</span>
+      9,836, <span class="chip k-suru">suru</span> 780.</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>word</th><th>candidates (見出し番号, headword, code)</th><th>why</th></tr></thead>
+      <tbody>
+        <tr><td class="ja">会う <span class="en">v-13725</span></td>
+          <td><span class="chip k-lemma">lemma</span> 69369 <span class="ja">あう</span> 2.1550-09-01-01<br>
+              <span class="chip k-lemma">lemma</span> 80089 <span class="ja">あう</span> 2.3520-01-01-01<br>
+              <span class="chip k-form">form</span> 77441 <span class="ja">遭う</span> 2.3310-01-01-02</td>
+          <td>Both あう records have a child spelled 会う, so <code>by_form["会う"]</code> finds them. 77441 is spelled only 遭う, one of the word's forms.</td></tr>
+        <tr><td class="ja">上げる <span class="en">v-4974, lemma 揚げる</span></td>
+          <td><span class="chip k-lemma">lemma</span> 68990 <span class="ja">あげる</span>, 84227 <span class="ja">揚げる</span> (fry)<br>
+              <span class="chip k-form">form</span> 66637, 70940, 82516, 83142, 85986 <span class="ja">上げる</span>; 74456, 75634 <span class="ja">挙げる</span></td>
+          <td>Nine candidates for its eleven senses. The sibling word v-17763 (lemma 上げる, no kanji variants) gets six, all <span class="chip k-lemma">lemma</span>.</td></tr>
+        <tr><td class="ja">浴する <span class="en">v-1332</span></td>
+          <td><span class="chip k-lemma">lemma</span> 68969, 78332, 79601 <span class="ja">浴する</span><br>
+              <span class="chip k-suru">suru</span> 35713 <span class="ja">浴</span> 1.3334-06-01-02</td>
+          <td>The する-stripped lookup reaches a noun record (類 1), so that row has <code>pos_ok</code> = 0.</td></tr>
+        <tr><td class="ja">丁度 <span class="en">r-12</span></td>
+          <td><span class="chip k-yomi">yomi</span> 86631 <span class="ja">ちょうど</span> 3.1130-04-01-01<br>
+              <span class="chip k-yomi">yomi</span> 89745 <span class="ja">ちょうど</span> 3.1920-08-01-01<br>
+              <span class="chip k-yomi">yomi</span> 51568 <span class="ja">調度</span> 1.4500-04-01-05 (furnishings)</td>
+          <td>WLSP spells the headword ちょうど in kana; <code>word_forms</code> dropped the word's kana form, so no spelling matches and the reading fallback fires, bringing in a homophone.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout">
+      <p><strong>A side effect worth knowing.</strong> Because kana forms of a kanji lemma
+        are readings, a WLSP headword written in kana (<span class="ja">ちょうど</span>,
+        <span class="ja">あう</span> as a parent) is reached either through a kanji child
+        record or through the <span class="chip k-yomi">yomi</span> fallback, never as a
+        <span class="chip k-form">form</span>. The fallback is all-or-nothing per word: it
+        adds every homophone (<span class="ja">調度</span>) once it runs.</p>
+    </div>
+
+    <h3>5 · Pair features</h3>
+    <span class="ref">candidates.py:207–230</span>
+    <pre><code>def pair_features(ctx: SynsetContext, own: set[str], rec: WlspEntry, db: Wlsp) -> dict[str, int]:
+    groups = {level: db.group_forms(rec, level) for level in LEVELS}
+    sets = dict(ctx.related)
+    sets["syn"] = ctx.forms - own
+    out: dict[str, int] = {}
+    for rel, level in OVERLAPS:
+        out[f"ov_{rel}_{level}"] = len(sets[rel] & groups[level])
+    for rel in RELATIONS:
+        out[f"n_{rel}"] = len(sets[rel])
+    for level in LEVELS:
+        out[f"size_{level}"] = len(db.groups[level][db.group_key(rec, level)])
+    return out</code></pre>
+    <p><code>db.group_forms(rec, level)</code> (<code>wlsp.py:276–289</code>) is the
+      union of folded forms of every sense in the record's group at that level.
+      <code>own</code> is the word's own forms, removed from the member set so that
+      the headword being matched never counts as evidence for itself. The real
+      vector for <span class="ja">紅</span> <code>wnja-04962784-n-44769</code>
+      ("red", 12 other members, 1 hypernym <span class="ja">有彩色</span>, 7 hyponyms,
+      70 siblings), gold record against two wrong ones (zero columns omitted):</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>feature</th><th>55770 赤 <small>1.5020-07-01-01 色</small><br><span class="chip g-exact">exact</span></th>
+        <th>50296 紅 <small>1.4370-02-01-01 化粧品</small><br><span class="chip g-other">other</span></th>
+        <th>27888 赤 <small>1.3075-11-05-02 説・論・主義</small><br><span class="chip g-other">other</span></th></tr></thead>
+      <tbody>
+        <tr><td class="num">lex</td><td class="num">form</td><td class="num">lemma</td><td class="num">form</td></tr>
+        <tr><td class="num">ov_syn_subpara</td><td class="num hi">3 <span class="ja">レッド, 赤み, 赤色</span></td><td class="num">0</td><td class="num">0</td></tr>
+        <tr><td class="num">ov_syn_para</td><td class="num hi">4 <span class="ja">+ 緋</span></td><td class="num">0</td><td class="num">0</td></tr>
+        <tr><td class="num">ov_syn_item</td><td class="num hi">4</td><td class="num">0</td><td class="num">0</td></tr>
+        <tr><td class="num">ov_hyper_item</td><td class="num hi">1 <span class="ja">有彩色</span></td><td class="num">0</td><td class="num">0</td></tr>
+        <tr><td class="num">ov_hypo_para</td><td class="num hi">2 <span class="ja">深紅, 真紅</span></td><td class="num">0</td><td class="num">0</td></tr>
+        <tr><td class="num">ov_hypo_item</td><td class="num hi">3 <span class="ja">+ 赤紫</span></td><td class="num">0</td><td class="num">0</td></tr>
+        <tr><td class="num">ov_sib_para</td><td class="num hi">5 <span class="ja">ばら色, ピンク, 桃色, 桜色, 薄紅</span></td><td class="num">1 <span class="ja">薄紅</span></td><td class="num">0</td></tr>
+        <tr><td class="num">ov_sib_item</td><td class="num hi">24 <span class="ja">青, 緑, 紫, 茶色 …</span></td><td class="num">1</td><td class="num">0</td></tr>
+        <tr><td class="num">yomi_match</td><td class="num">1</td><td class="num">0</td><td class="num">1</td></tr>
+        <tr><td class="num">size_para / size_item</td><td class="num">24 / 287</td><td class="num">23 / 92</td><td class="num">14 / 238</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The cosmetic sense (<code>50296</code>, 段落 <span class="ja">口紅, ルージュ,
+      リップスティック, 薄紅 …</span>) picks up one sibling, <span class="ja">薄紅</span>,
+      a colour name doubling as a cosmetic. The political sense (<code>27888</code>, 段落
+      <span class="ja">社会主義, 共産主義, マルクス主義 …</span>) shares nothing with the
+      colour synset, although wnja does have <span class="ja">紅</span> in a communism
+      synset (<code>wnja-06214744-n</code>), a different sense of the same word.
+      Over the labelled rows, 510 of the 587 gold pairs have at least one non-zero
+      overlap; so do 339 of the 673 <span class="chip g-other">other</span> pairs and
+      163 of the 1,188 decoys.</p>
+
+    <h3>6 · Gold labels and their grades</h3>
+    <span class="ref">candidates.py:233–273</span>
+    <pre><code>def gold_relation(mid: str, golds: set[str], db: Wlsp) -> str:
+    if mid in golds:
+        return "exact"
+    rec = db.senses[mid]
+    for level in ("subpara", "para", "item"):
+        key = db.group_key(rec, level)
+        if any(db.group_key(db.senses[g], level) == key for g in golds):
+            return f"same_{level}"
+    return "other"</code></pre>
+    <p>WLSP lists one headword several times close together (other readings, near
+      duplicates), so a candidate in the same 小段落 as the gold is not a safe negative.
+      The grade records how close it is; the binary <code>gold</code> is then set on
+      line 411 as <code>{"exact": 1, "other": 0}.get(rel)</code>, which leaves the
+      three <code>same_*</code> grades as null. One real row per value:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>gold_rel</th><th>gold</th><th>sense</th><th>candidate</th><th>why</th><th>rows</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip g-exact">exact</span></td><td class="num">1</td><td class="ja">紅 n-44769 (red)</td>
+          <td class="num">55770 赤 1.5020-07-01-01</td><td>the dev-set record</td><td class="num">587</td></tr>
+        <tr><td><span class="chip g-near">same_subpara</span></td><td class="num">null</td><td class="ja">人 n-167 (hominid)</td>
+          <td class="num">14487 人（にん） 1.2000-01-01-03</td><td>gold is 14486 人（ひと） 1.2000-01-01-02, same 小段落</td><td class="num">72</td></tr>
+        <tr><td><span class="chip g-near">same_para</span></td><td class="num">null</td><td class="ja">紅 n-44769</td>
+          <td class="num">55778 紅 1.5020-07-03-01</td><td>段落 (1.5020, 07) shared with the gold</td><td class="num">12</td></tr>
+        <tr><td><span class="chip g-near">same_item</span></td><td class="num">null</td><td class="ja">紅 n-44769</td>
+          <td class="num">55794 朱 1.5020-08-01-01</td><td>分類項目 1.5020 shared, a different 段落</td><td class="num">17</td></tr>
+        <tr><td><span class="chip g-other">other</span></td><td class="num">0</td><td class="ja">紅 n-44769</td>
+          <td class="num">50296 紅 1.4370-02-01-01</td><td>a different 分類項目 (化粧品)</td><td class="num">673</td></tr>
+        <tr><td><span class="chip g-decoy">decoy</span></td><td class="num">0</td><td class="ja">紅 n-44769</td>
+          <td class="num">38737 急用 1.3460-01-01-05</td><td>a random noun from elsewhere, added by <code>pick_decoys</code></td><td class="num">1,188</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>So the 2,448 labelled rows (<code>gold</code> not null) are 587 + 673 + 1,188;
+      the 101 <code>same_*</code> rows are kept in the table but carry no label.
+      Rows for the 95,627 senses outside the dev set have null in both columns.
+      A dev sense can have a positive and still be a trap for a scorer: for
+      <span class="ja">丁度</span> the gold <code>86631</code> is in 類 3 (相, mapped
+      to <code>a</code>) while the wnja sense is an adverb, so the only exact row has
+      <code>pos_ok</code> = 0. <code>pos_ok</code> is a feature, never a filter.</p>
+
+    <h3>7 · Reading match</h3>
+    <span class="ref">candidates.py:276–290</span>
+    <p><code>reading_match</code> compares the word's kana forms with the record's
+      readings (<code>db.readings</code>) and returns <code>None</code> when the word has
+      no kana form at all; <code>build</code> stores that as <code>yomi_match</code> = 0
+      with <code>has_yomi</code> = 0 (<code>:402–404</code>). Only 578 rows lack a reading;
+      149,357 match and 18,605 do not. For <span class="ja">紅</span> (reading
+      <span class="ja">あか</span> on word n-44769) the record <code>55778</code>
+      <span class="ja">紅</span> reads <span class="ja">くれない</span>, so
+      <code>yomi_match</code> = 0 despite the identical spelling.</p>
+
+    <h3>8 · Decoys</h3>
+    <span class="ref">candidates.py:293–330 · 369–381</span>
+    <p>Every dev word was linked to something, so the dev set has no example of a word
+      whose only candidate is wrong. To give the scorer negatives that are not just
+      "the other sense of the same word", <code>build</code> adds two decoys per dev
+      sense (<code>--decoys</code>, default 2):</p>
+    <pre><code>def pick_decoys(word_forms_, taken, pos, db, k, rng):
+    out: list[str] = []
+    mids = db.by_pos.get(pos, [])
+    for _ in range(50 * k):
+        if len(out) >= k or not mids:
+            break
+        mid = mids[rng.randrange(len(mids))]
+        rec = db.senses[mid]
+        if rec.item_key in taken or db.forms[mid] & word_forms_ or mid in out:
+            continue
+        out.append(mid)
+    return out</code></pre>
+    <p>A decoy is drawn from the WLSP senses of the same 類 as the sense's part of
+      speech (<code>by_pos</code>: n 64,584, v 21,682, a 8,915, r 870), skipping any
+      分類項目 one of the word's real candidates occupies, any record that shares a
+      spelling with the word, and repeats. For <span class="ja">紅</span> the taken
+      分類項目 are <code>{1.5020, 1.4370, 1.1962, 1.3075}</code>; the draw gave
+      <code>38737</code> <span class="ja">急用</span> (1.3460) and <code>27669</code>
+      <span class="ja">食品学</span> (1.3074). The seed is fixed (<code>seed=0</code>), so
+      a rerun picks the same decoys. 594 senses received exactly two decoys; the
+      other 2 of the 596 dev senses with candidates, <span class="ja">ええ</span> and
+      <span class="ja">いかが</span>, have part of speech <code>x</code>, for which
+      <code>by_pos</code> has no entry (WLSP 類 digits map only to n, v, a, r), so
+      <code>mids</code> is empty and the loop breaks at once.</p>
+    <p>In <code>build</code> the decoy is disguised (<code>:376–381</code>): its
+      <code>lex</code> is set to the match type of the word's first real candidate, so
+      the only difference from a real candidate lies in the pair features.
+      <span class="ja">丁度</span>'s decoys <span class="ja">よもや</span> and
+      <span class="ja">がちゃがちゃ</span> are stamped <span class="chip k-yomi">yomi</span>.
+      The filter is at 分類項目 level only: <span class="ja">先生</span>'s decoy
+      <span class="ja">漁民</span> (1.2413) shares the 中項目 1.24 with the gold, and so
+      has <code>ov_hyper_middle</code> = 2 and <code>ov_hypo_middle</code> = 6.</p>
+
+    <h3>9 · The loop and the output</h3>
+    <span class="ref">candidates.py:333–457</span>
+    <p><code>build</code> (<code>:333–423</code>) walks <code>ja.words()</code>, finds
+      the candidates once per word, then for each sense of the word emits one row per
+      candidate (plus decoys for dev senses). Each row holds the identifiers, the
+      match type, <code>pos_ok</code>, the counts <code>n_cands</code>,
+      <code>n_senses</code>, <code>sense_rank</code> (the sense's position in
+      <code>word.senses()</code>), <code>go_no</code>, the pair features, the reading
+      flags and the gold columns. The frame is cast so <code>gold</code> is
+      <code>Int8</code> with nulls (<code>:423</code>).</p>
+    <p><code>main</code> (<code>:426–457</code>) points <code>wn</code> at
+      <code>.wn_data</code>, opens <code>wnja:2.1</code> and <code>omw-en:1.4</code>,
+      loads <code>data/WLSP/bunruidb.txt</code>, reads the dev set if present, writes
+      the parquet and logs a summary. The first rows of the table as written:</p>
+    <pre class="data">sense_id            lemma  midashi_no  code             wlsp_lemma  lex    pos_ok  n_cands  ov_syn_para  gold_rel  gold
+wnja-00001740-a-0   可能    03250       1.1346-01-02-01  可能         lemma  0       2        0            null      null
+wnja-00001740-a-0   可能    87563       3.1346-01-01-01  可能         lemma  1       2        0            null      null
+wnja-00051373-a-0   可能    03250       1.1346-01-02-01  可能         lemma  0       2        0            null      null
+wnja-00051373-a-0   可能    87563       3.1346-01-01-01  可能         lemma  1       2        0            null      null</pre>
+    <p>The summary line (<code>:449–456</code>) reports the row count, the labelled
+      and positive counts, and how many gold senses got a candidate. Reconstructed
+      from the table rather than copied from a log, for the current build it reads:</p>
+    <pre class="data">INFO wrote build/candidates.parquet: 168540 rows, 2448 labelled (587 positive); gold senses with a candidate: 596 of 597</pre>
+    <p>The one gold sense with no candidate is <span class="ja">珈琲</span> "coffee"
+      (<code>wnja-07929519-n-58291</code>). Its word has forms
+      <span class="ja">珈琲, コーヒー, こーひー</span>, but the lemma is kanji, so the kana
+      forms are readings, not spellings, and <code>word_forms</code> is just
+      <span class="ja">{珈琲}</span>. WLSP has no <span class="ja">珈琲</span>; its record
+      <code>49763</code> is spelled <span class="ja">コーヒー</span>, which
+      <code>by_form["こーひー"]</code> would find, and reads
+      <span class="ja">こおひい</span>, which the fallback <code>by_yomi["こーひー"]</code>
+      does not. Later scripts add columns to this same file:
+      <code>chive_*</code> and <code>sent_*</code> are already present in the copy
+      used for this page, which is why it has 59 columns rather than the 47 this
+      script writes.</p>
+
+    <h3>Reproducing the examples</h3>
+    <p>Every number above came from the parquet and the <code>wn</code> database with
+      the project's own libraries. The table side:</p>
+    <pre class="data query">import polars as pl
+df = pl.read_parquet("build/candidates.parquet")
+df.group_by("lex").len()                      # lemma 114567, yomi 43357, form 9836, suru 780
+df.group_by("gold_rel").len()                 # exact 587, other 673, decoy 1188, same_subpara 72, ...
+df.filter(pl.col("lemma") == "会う").select("sense_id", "midashi_no", "code", "wlsp_lemma", "lex")
+df.filter(pl.col("sense_id") == "wnja-04962784-n-44769").select(
+    "midashi_no", "code", "gold_rel", "gold", pl.col("^ov_.*$"))</pre>
+    <p>The wordnet and WLSP side, using the script's own functions (run from the
+      repository root with the project venv):</p>
+    <pre class="data query">import sys, pathlib, wn
+sys.path.insert(0, "scripts")
+from wlsp import Wlsp, fold
+from candidates import word_forms, kana_forms, find_candidates
+wn.config.data_directory = pathlib.Path(".wn_data").resolve()
+ja = wn.Wordnet(lexicon="wnja:2.1"); en = wn.Wordnet(lexicon="omw-en:1.4")
+db = Wlsp.load(pathlib.Path("data/WLSP/bunruidb.txt"))
+w = ja.word("wnja-v-13725")                   # 会う
+w.forms(), word_forms(w), kana_forms(w)
+find_candidates(w, db)                        # {'69369': 'lemma', '80089': 'lemma', '77441': 'form'}
+rec = db.senses["80089"]
+db.neighbours(rec, "para"), len(db.groups["item"][rec.item_key])
+es = en.synsets(ili="i93557")[0]              # teacher
+[ja.synsets(ili=h.ili)[0].words() for h in es.hypernyms()]</pre>
+  </section>
+
+  <section id="quiz" class="quiz">
+    <h2>Quiz</h2>
+    <p>Six questions on the substance. Pick one per question; the reason appears
+      either way.</p>
+    <div id="quizRoot"></div>
+  </section>
+
+  <section id="trust">
+    <h2>How much to trust this</h2>
+    <p>This page was written by an AI from the source file. That makes it fast to
+      produce and easy to refine, and fallible: a model can misread a line, invent a
+      plausible detail, or keep a number that has since changed.</p>
+    <ul>
+      <li>Every code claim carries a <code>file:line</code> reference into
+        <code>scripts/candidates.py</code> or <code>scripts/wlsp.py</code> at commit
+        <code>b3e6896</code>. Open it and check.</li>
+      <li>The counts (168,540 rows; 2,448 labelled; 587 positive; lex and gold_rel
+        distributions; 60,426 lone candidates) were read from
+        <code>build/candidates.parquet</code> on 2026-11-05, not from a captured log.
+        The parquet was not rebuilt for this page; a rebuild after a change to
+        <code>wnja</code>, WLSP or the dev set will move them.</li>
+      <li>The feature vectors for <span class="ja">休み</span>, <span class="ja">先生</span>
+        and <span class="ja">紅</span> were recomputed with <code>pair_features</code>
+        from the current code and agree with the stored rows; the lists of overlapping
+        words come from that recomputation.</li>
+      <li>The decoy for <span class="ja">紅</span> and the "596 of 597" figure depend on
+        <code>seed=0</code> and on the dev set as of today's 734 rows.</li>
+      <li>The quiz answers are derived from the code; where one disagrees with the
+        code, the code wins. Please report it.</li>
+    </ul>
+    <p>The mechanical check, <code>explainer_check.py</code> from the code-explainer
+      skill, was run on this page against both source files; it verifies identifiers in
+      code blocks and the line ranges, not the prose. A human reading against the
+      source is the other half.</p>
+  </section>
+
+  <section id="glossary">
+    <h2>Glossary</h2>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Term</th><th>What it means here</th></tr></thead>
+      <tbody>
+        <tr><td><strong>word / sense / synset</strong></td><td>wnja's three levels: the word
+          <span class="ja">会う</span> (<code>wnja-v-13725</code>) has nine senses, each
+          placing it in one synset (<code>wnja-02023107-v</code>).</td></tr>
+        <tr><td><strong>ILI</strong></td><td>interlingual index id (<code>i93557</code>) shared by
+          wnja and omw-en; the bridge the hierarchy crosses.</td></tr>
+        <tr><td><strong>見出し番号</strong></td><td>the WLSP sense id (<code>80089</code>); one
+          canonical record plus child records sharing it.</td></tr>
+        <tr><td><strong>分類番号</strong></td><td>類.部門中項目分類項目, e.g. <code>2.3520</code>:
+          first digit 類 (part of speech), four digits locate the 分類項目.</td></tr>
+        <tr><td><strong>小段落 / 段落 / 分類項目 / 中項目</strong></td><td>the four nested
+          groups (subpara, para, item, middle) a record belongs to; sizes for
+          <code>80089</code>: 2, 11, 205, 1,200.</td></tr>
+        <tr><td><strong>fold</strong></td><td>NFKC + katakana to hiragana; the comparison key
+          for every string on both sides.</td></tr>
+        <tr><td><strong>lex</strong></td><td>how a candidate was found:
+          <span class="chip k-lemma">lemma</span>, <span class="chip k-form">form</span>,
+          <span class="chip k-suru">suru</span> or <span class="chip k-yomi">yomi</span>.
+          Decoys borrow the word's first type.</td></tr>
+        <tr><td><strong>ov_&lt;rel&gt;_&lt;level&gt;</strong></td><td>size of the intersection
+          between one synset relation set and one WLSP group; 16 of them.</td></tr>
+        <tr><td><strong>gold_rel</strong></td><td>graded label for dev senses:
+          <span class="chip g-exact">exact</span>, <span class="chip g-near">same_subpara /
+          same_para / same_item</span> (unlabelled), <span class="chip g-other">other</span>,
+          <span class="chip g-decoy">decoy</span>.</td></tr>
+        <tr><td><strong>lone candidate</strong></td><td>a pair whose sense has
+          <code>n_cands</code> = 1; 60,426 rows. The dev set cannot tell whether such a
+          pair is right, which is why decoys exist.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>Explainer for <code>scripts/candidates.py</code> in wnja-bunrigoihyou. Format after
+      Geoffrey Litt's <em>explain-diff</em>: background, intuition, code, quiz.</p>
+    <p class="prov">Explainer v0, generated 2026-11-05 by Claude Fable 5.1 from commit
+      <code>b3e6896</code> (scripts/candidates.py, 461 lines; scripts/wlsp.py, 321 lines) ·
+      data: wnja:2.1, omw-en:1.4, WLSP bunruidb.txt (101,067 records), dev/devset.tsv
+      (734 rows), build/candidates.parquet (168,540 rows) read 2026-11-05 ·
+      regenerate when the code changes.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const QUESTIONS = [
+    {
+      q: "The wnja word 会う reaches WLSP record 77441 (spelled 遭う) with lex = form, but records 69369 and 80089 (headword あう) with lex = lemma. Why lemma for the kana headwords?",
+      options: [
+        {t:"Both あう parent records have a child record spelled 会う, so by_form['会う'] already lists them; the lemma loop runs first and setdefault keeps that label", ok:true},
+        {t:"fold() turns 会う into あう before the lookup, so the kana headword matches the lemma directly", ok:false},
+        {t:"The reading あう in kana_forms matched the records' yomi", ok:false},
+        {t:"WLSP verbs are always matched by lemma; form only applies to nouns", ok:false},
+      ],
+      why:"db.forms merges parent and child spellings (wlsp.py:220–223), so the 見出し番号 80089 is indexed under 会う and 遭う as well as あう. find_candidates checks the lemma first (:191–193) and later loops use setdefault, so a record found by the lemma keeps lemma. fold does not convert kanji."
+    },
+    {
+      q: "丁度 (wnja-r-12) has the kana form ちょうど, and WLSP has a headword ちょうど. Why are its candidates labelled yomi rather than form?",
+      options: [
+        {t:"word_forms drops kana forms when the lemma is not kana, so no spelling matches and the reading fallback is the only route; it also pulls in the homophone 調度", ok:true},
+        {t:"Adverbs are always matched by reading because WLSP's 類 4 has no kanji headwords", ok:false},
+        {t:"The yomi index is consulted first for every word; form matches are only added when it is empty", ok:false},
+        {t:"ちょうど is in katakana in wnja and fold() does not convert katakana", ok:false},
+      ],
+      why:"Line 112 keeps a kana form as a spelling only if the lemma is kana. 丁度 is kanji, so word_forms is {丁度, 恰度}, neither in by_form. Only then (:200–203) does kana_forms = {ちょうど} go through by_yomi, which returns 86631, 89745 and 調度 51568."
+    },
+    {
+      q: "For 紅 (wnja-04962784-n-44769) the candidate 55778 紅 1.5020-07-03-01 is in the same 段落 as the gold 55770. What does its row carry?",
+      options: [
+        {t:"gold_rel = same_para and gold = null: it is kept in the table but not used as a positive or a negative", ok:true},
+        {t:"gold_rel = same_para and gold = 1, because anything in the gold's 段落 counts as correct", ok:false},
+        {t:"gold_rel = other and gold = 0, since only the exact record is positive", ok:false},
+        {t:"The row is dropped so it cannot confuse the scorer", ok:false},
+      ],
+      why:"gold_relation (:250–273) returns same_para; build sets gold = {'exact': 1, 'other': 0}.get(rel) on line 411, which is None for same_*. WLSP lists one headword several times nearby, so these are not clear negatives. 101 rows are in this state."
+    },
+    {
+      q: "先生 has two candidates that share members with the teacher synset: 18152 (専門的・技術的職業, gold) and 19541 (相対的地位, with 師, 師匠, 師範, 老師). Which features separate them at the 段落 level?",
+      options: [
+        {t:"ov_hyper_para, ov_hypo_para and ov_sib_para: only the gold's 段落 holds 教育家/教育者, 家庭教師/教諭 and 講師", ok:true},
+        {t:"ov_syn_para alone: 19541 has zero member overlap", ok:false},
+        {t:"pos_ok: 19541 is a verb record", ok:false},
+        {t:"yomi_match: the honorific record reads しょうしょう", ok:false},
+      ],
+      why:"Both rows have member overlap (5 and 4). The gold row additionally has ov_hyper_para 2, ov_hypo_para 2 and ov_sib_para 1; 19541 has hierarchy overlap only at the 中項目 level. Both are nouns with reading せんせい."
+    },
+    {
+      q: "A decoy for 先生, 漁民 (1.2413), has ov_hyper_middle = 2 and ov_hypo_middle = 6. How can a decoy overlap at all?",
+      options: [
+        {t:"pick_decoys only excludes the 分類項目 of the word's real candidates; 漁民 is in a different 分類項目 but the same 中項目 1.24, whose 2,081 senses include 教育者 and 教諭", ok:true},
+        {t:"Decoys are chosen to be hard: the function prefers records with high overlap", ok:false},
+        {t:"The middle-level features are computed before decoys are filtered", ok:false},
+        {t:"漁民 is a hyponym of teacher in omw-en", ok:false},
+      ],
+      why:"The filter on line 327 tests rec.item_key in taken, i.e. the 分類項目 (1.2413 vs 1.2410), plus shared spellings and repeats. Nothing checks the 中項目, so a decoy from a neighbouring topic can share loose context. The draw is random (seed 0), not difficulty-weighted."
+    },
+    {
+      q: "Where do the hypernym and hyponym forms in a SynsetContext come from?",
+      options: [
+        {t:"From omw-en:1.4, reached through the synset's ILI, then mapped back to wnja synsets with by_ili to collect their Japanese forms", ok:true},
+        {t:"From wnja's own hypernym links, which cover every synset", ok:false},
+        {t:"From the WLSP 段落 of the candidate record", ok:false},
+        {t:"From the English glosses, by looking up each English word in wnja", ok:false},
+      ],
+      why:"synset_contexts (:128–176) takes similar/also/antonym from wnja but hypernyms, hyponyms and siblings from en.synsets(ili=ss.ili), converting each English synset back to Japanese forms with ja_forms. A synset without an ILI gets no hierarchy; 2,231 rows have ili == ''."
+    },
+  ];
+
+  function shuffle(a){
+    for(let i=a.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  const root = document.getElementById('quizRoot');
+  QUESTIONS.forEach((item, qi)=>{
+    const q = document.createElement('div'); q.className='q';
+    const h = document.createElement('p'); h.className='qhead';
+    h.innerHTML = '<span>Q'+(qi+1)+'</span>'+item.q;
+    q.appendChild(h);
+    const ul = document.createElement('ul');
+    shuffle(item.options.slice()).forEach(opt=>{
+      const li=document.createElement('li');
+      const b=document.createElement('button');
+      b.className='opt'; b.type='button'; b.textContent=opt.t;
+      b.addEventListener('click',()=>{
+        if(q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        b.classList.add(opt.ok?'correct':'wrong');
+        ul.querySelectorAll('button').forEach(x=>{
+          x.disabled=true;
+          if(x.textContent===item.options.find(o=>o.ok).t) x.classList.add('correct');
+        });
+      });
+      li.appendChild(b); ul.appendChild(li);
+    });
+    q.appendChild(ul);
+    const why=document.createElement('p'); why.className='why';
+    why.innerHTML='<strong>Why:</strong> '+item.why;
+    q.appendChild(why);
+    root.appendChild(q);
+  });
+})();
+</script>

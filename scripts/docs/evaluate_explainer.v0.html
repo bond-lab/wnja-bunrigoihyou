@@ -1,0 +1,745 @@
+<title>Evaluating the WLSP links</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one measured column of prose, with wide tables and code allowed to scroll inside it. */
+  :root{
+    --ground:#f7f6f2; --surface:#ffffff; --ink:#1f2328; --muted:#5d6670;
+    --accent:#35508f; --accent-soft:#e6eaf5; --hair:#e3e1da;
+    --exact:#2f7d4f; --near:#a9711a; --miss:#b0453f; --decoy:#7a8a8c;
+    --code-bg:#f0efe9;
+    --serif: "Palatino Linotype","Palatino","Book Antiqua",Georgia,"Hiragino Mincho ProN","Yu Mincho","Noto Serif CJK JP",serif;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans CJK JP",sans-serif;
+    --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#13161b; --surface:#1b1f26; --ink:#e8e9e6; --muted:#9aa3ad;
+      --accent:#8ea4e0; --accent-soft:#232c42; --hair:#2b313a;
+      --exact:#5bbd82; --near:#d7a24e; --miss:#e07a72; --decoy:#8ba0a1;
+      --code-bg:#171b21; color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#13161b; --surface:#1b1f26; --ink:#e8e9e6; --muted:#9aa3ad;
+    --accent:#8ea4e0; --accent-soft:#232c42; --hair:#2b313a;
+    --exact:#5bbd82; --near:#d7a24e; --miss:#e07a72; --decoy:#8ba0a1;
+    --code-bg:#171b21; color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--serif);line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .wrap{max-width:46rem;margin:0 auto;padding-block:3rem 5rem;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+  .eyebrow{font-family:var(--sans);font-size:.72rem;font-weight:600;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
+  h1{font-size:2.1rem;line-height:1.15;margin:0 0 .4rem;text-wrap:balance;font-weight:600}
+  .lede{font-size:1.15rem;color:var(--muted);margin:0 0 1.5rem;text-wrap:balance}
+  .meta{font-family:var(--mono);font-size:.8rem;color:var(--muted);
+    border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);
+    padding:.6rem 0;display:flex;gap:1.2rem;flex-wrap:wrap}
+
+  nav.toc{margin:2rem 0 2.5rem;font-family:var(--sans);font-size:.9rem}
+  nav.toc ol{list-style:none;counter-reset:s;padding:0;margin:0;display:grid;gap:.35rem}
+  nav.toc li{counter-increment:s}
+  nav.toc a{color:var(--ink);text-decoration:none;display:flex;gap:.6rem;
+    padding:.35rem .5rem;border-radius:6px}
+  nav.toc a::before{content:counter(s,decimal-leading-zero);color:var(--accent);
+    font-variant-numeric:tabular-nums;font-weight:600}
+  nav.toc a:hover{background:var(--accent-soft)}
+
+  section{margin:3rem 0}
+  h2{font-size:1.5rem;margin:0 0 .8rem;font-weight:600;
+    padding-bottom:.3rem;border-bottom:2px solid var(--accent-soft)}
+  h3{font-size:1.08rem;font-family:var(--sans);font-weight:600;margin:1.6rem 0 .4rem}
+  p{margin:.8rem 0}
+  a{color:var(--accent)}
+  strong{font-weight:600}
+  .ja{font-family:var(--sans)}
+  .en{color:var(--muted)}
+
+  code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);
+    padding:.1em .35em;border-radius:4px}
+  pre{font-family:var(--mono);font-size:.82rem;line-height:1.5;
+    background:var(--code-bg);border:1px solid var(--hair);border-radius:10px;
+    padding:1rem 1.1rem;overflow-x:auto;white-space:pre;margin:1rem 0;min-width:0}
+  pre code{background:none;padding:0;font-size:1em}
+  pre.data{background:var(--surface)}
+  .ref{font-family:var(--mono);font-size:.76rem;color:var(--muted);
+    display:block;margin:-.4rem 0 .9rem}
+
+  .chip{font-family:var(--mono);font-size:.74rem;font-weight:600;
+    padding:.12em .5em;border-radius:999px;white-space:nowrap;border:1px solid currentColor}
+  .k-exact{color:var(--exact)} .k-near{color:var(--near)}
+  .k-miss{color:var(--miss)} .k-decoy{color:var(--decoy)}
+
+  /* pipeline diagram */
+  .flow{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;justify-content:center;
+    margin:1.4rem 0;font-family:var(--sans);font-size:.82rem}
+  .node{background:var(--surface);border:1px solid var(--hair);border-radius:8px;
+    padding:.5rem .7rem;text-align:center;box-shadow:0 1px 0 var(--hair);min-width:0}
+  .node b{display:block;color:var(--accent);font-size:.9rem}
+  .node small{color:var(--muted);font-family:var(--mono);font-size:.72rem}
+  .arrow{color:var(--muted);font-weight:700}
+  .arrow small{display:block;font-size:.66rem;font-family:var(--mono);font-weight:400;color:var(--accent)}
+  .branch{display:flex;flex-direction:column;gap:.5rem}
+
+  /* WLSP code anatomy */
+  .anat{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center;margin:1.2rem 0;font-family:var(--mono)}
+  .anat span{display:flex;flex-direction:column;align-items:center;background:var(--surface);
+    border:1px solid var(--hair);border-radius:8px;padding:.45rem .7rem;font-size:1.05rem}
+  .anat span small{font-family:var(--sans);font-size:.68rem;color:var(--muted);margin-top:.2rem}
+
+  table.toy{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.86rem;font-family:var(--sans)}
+  table.toy th,table.toy td{text-align:left;padding:.5rem .55rem;border-bottom:1px solid var(--hair);vertical-align:top}
+  table.toy th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  table.toy td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  table.toy tr.hit td{background:color-mix(in srgb,var(--exact) 9%,transparent)}
+  .wrap-x{overflow-x:auto;min-width:0}
+
+  .callout{background:var(--accent-soft);border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .callout p{margin:.3rem 0}
+
+  .caveat{font-family:var(--sans);font-size:.86rem;line-height:1.45;color:var(--ink);
+    background:color-mix(in srgb,var(--near) 12%,transparent);
+    border:1px solid color-mix(in srgb,var(--near) 45%,transparent);
+    border-radius:8px;padding:.7rem .9rem;margin:1.2rem 0}
+  .caveat b{color:var(--near)}
+
+  /* quiz */
+  .quiz .q{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:1.1rem 1.2rem;margin:1rem 0}
+  .quiz .qhead{font-weight:600;margin:0 0 .7rem;font-family:var(--sans);font-size:1rem}
+  .quiz .qhead span{color:var(--accent);font-family:var(--mono);margin-right:.5rem}
+  .quiz ul{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
+  .quiz button.opt{width:100%;text-align:left;font:inherit;font-family:var(--sans);font-size:.92rem;
+    background:var(--ground);color:var(--ink);cursor:pointer;border:1px solid var(--hair);
+    border-radius:8px;padding:.6rem .8rem;transition:border-color .15s,background .15s}
+  .quiz button.opt:hover{border-color:var(--accent)}
+  .quiz button.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .quiz button.opt.correct{border-color:var(--exact);background:color-mix(in srgb,var(--exact) 14%,transparent)}
+  .quiz button.opt.wrong{border-color:var(--miss);background:color-mix(in srgb,var(--miss) 12%,transparent)}
+  .quiz button.opt[disabled]{cursor:default}
+  .quiz .why{font-size:.88rem;color:var(--muted);margin:.7rem 0 0;padding-left:.6rem;border-left:2px solid var(--hair);display:none}
+  .quiz .q.answered .why{display:block}
+
+  footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--hair);font-family:var(--sans);font-size:.82rem;color:var(--muted)}
+  .prov{font-family:var(--mono);font-size:.75rem;line-height:1.55;margin-top:.7rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">wnja-bunrigoihyou · Code explainer</p>
+    <h1>Evaluating the wnja to WLSP links</h1>
+    <p class="lede">How <code>evaluate.py</code> turns a scored candidate table into the
+      five-line block in <code>dev/eval.md</code>: ranking over ambiguous senses, precision
+      and recall of the kept links, and a decoy check.</p>
+    <div class="meta">
+      <span>scripts/evaluate.py</span><span>173 lines</span>
+      <span>deps: polars</span><span>run: uv run scripts/evaluate.py --name laptop-final</span>
+    </div>
+    <p class="caveat"><b>Generated by an AI.</b> This page was written from the code and
+      can be wrong: a misread line, an invented detail, a stale number. Trust the code,
+      not this page. Check anything that matters against <code>scripts/evaluate.py</code>
+      and run it. Every example and count here comes from one real table,
+      <code>build/scored.parquet</code> as it stood on 2026-11-05 (the
+      <code>laptop-final</code> run); rebuild the table and they will move.
+      See <a href="#trust">How much to trust this</a>.</p>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#background">Background: what is being scored</a></li>
+      <li><a href="#intuition">Intuition: two senses by hand</a></li>
+      <li><a href="#code">Code: how the script runs</a></li>
+      <li><a href="#quiz">Quiz</a></li>
+      <li><a href="#trust">How much to trust this</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <p>The project links each sense of the Japanese WordNet (wnja 2.1) to a record of
+      <span class="ja">分類語彙表</span> (WLSP), NINJAL's thesaurus of about 100,000
+      records arranged by meaning. Upstream scripts build and score the candidate pairs;
+      this script only measures how good the scores are, on the part of the table that
+      has hand-made answers.</p>
+
+    <h3>The two sides of a link</h3>
+    <p>A <strong>wnja sense</strong> is one word in one synset. Its id carries both:
+      <code>wnja-09876454-n-65694</code> is the word <span class="ja">兄弟</span> in synset
+      <code>09876454-n</code> ("sibling"). The same word in another synset is another
+      sense: <span class="ja">朝</span> is <code>wnja-15165289-n-82149</code> ("morning")
+      and also a sense in a synset for a Chinese dynasty.</p>
+    <p>A <strong>WLSP record</strong> is one headword in one place in the thesaurus. Its
+      position is a code read left to right from broad to narrow:</p>
+    <div class="anat" aria-label="Anatomy of the WLSP code 1.2140-01-01-02">
+      <span>1<small>類 (noun)</small></span>
+      <span>.2140<small>分類項目 兄弟</small></span>
+      <span>-01<small>段落</small></span>
+      <span>-01<small>小段落</small></span>
+      <span>-02<small>語番号</small></span>
+    </div>
+    <p>The first four levels name the path <span class="ja">体/主体/家族/兄弟</span>
+      (the <code>labels</code> column); the <span class="ja">段落</span> and
+      <span class="ja">小段落</span> are numbered groups of related words inside that
+      heading. Here is the whole of <span class="ja">小段落</span> 1.2140-01-01, its
+      neighbour, and the start of the next <span class="ja">段落</span>, straight from
+      <code>bunruidb.txt</code>:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>record</th><th>見出し番号</th><th>code</th><th>headword</th><th>reading</th></tr></thead>
+      <tbody>
+        <tr><td class="num">016779</td><td class="num">15835</td><td class="num">1.2140-01-01-01</td><td class="ja">はらから</td><td class="ja">はらから</td></tr>
+        <tr><td class="num">016780</td><td class="num">15836</td><td class="num">1.2140-01-01-02</td><td class="ja">兄弟（きょうだい）</td><td class="ja">きょうだい</td></tr>
+        <tr><td class="num">016781</td><td class="num">15837</td><td class="num">1.2140-01-01-03</td><td class="ja">兄弟（けいてい）</td><td class="ja">けいてい</td></tr>
+        <tr><td class="num">016782</td><td class="num">15838</td><td class="num">1.2140-01-01-04</td><td class="ja">同胞</td><td class="ja">どうほう</td></tr>
+        <tr><td class="num">016783</td><td class="num">15839</td><td class="num">1.2140-01-02-01</td><td class="ja">姉妹（しまい）</td><td class="ja">しまい</td></tr>
+        <tr><td class="num">016784</td><td class="num">15840</td><td class="num">1.2140-01-02-02</td><td class="ja">兄姉（けいし）</td><td class="ja">けいし</td></tr>
+        <tr><td class="num">016785</td><td class="num">15841</td><td class="num">1.2140-02-01-01</td><td class="ja">兄</td><td class="ja">あに</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The same headword <span class="ja">兄弟</span> appears twice in one
+      <span class="ja">小段落</span>, once per reading. WLSP does this often
+      (<span class="ja">魚</span> うお/さかな, <span class="ja">毎年</span> まいねん/まいとし,
+      <span class="ja">風邪</span> ふうじゃ/かぜ). The gold standard names one of the two;
+      the other is not a wrong link. That one fact drives the strict/lenient split below.
+      Candidates and gold are keyed by <span class="ja">見出し番号</span>
+      (<code>midashi_no</code>), which is almost always one record; <span class="ja">朝</span>
+      below is a case where one <span class="ja">見出し番号</span> (08425) covers two records.</p>
+
+    <h3>The table the script reads</h3>
+    <p><code>build/scored.parquet</code> has one row per candidate pair: 168,540 rows,
+      132 columns. Only three columns matter here, plus the ids:</p>
+    <ul>
+      <li><code>gold_rel</code>, set by <code>candidates.py</code> for senses that are in
+        the dev set and <code>null</code> for the other 165,991 rows. It says how the
+        candidate relates to the gold record of that sense.</li>
+      <li><code>baseline</code>, the hand-weighted overlap score from <code>score.py</code>
+        (lines 109 to 127): three points per synonym in the gold's
+        <span class="ja">小段落</span>, two per synonym in its <span class="ja">段落</span>,
+        and so on. Values run from 0 to 42.5 and tie often. It is not a probability.</li>
+      <li><code>p_cv</code>, the scorer's probability for dev rows, from grouped
+        cross-validation so a sense is never scored by a model that trained on it.</li>
+    </ul>
+    <p>The 2,549 dev rows by <code>gold_rel</code>, each with a real row behind it:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>gold_rel</th><th>rows</th><th>meaning</th><th>example</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip k-exact">exact</span></td><td class="num">587</td>
+          <td>the gold record itself</td>
+          <td><span class="ja">兄弟</span> → 016780 兄弟（きょうだい）</td></tr>
+        <tr><td><span class="chip k-near">same_subpara</span></td><td class="num">72</td>
+          <td>another record in the gold's <span class="ja">小段落</span></td>
+          <td><span class="ja">兄弟</span> → 016781 兄弟（けいてい）</td></tr>
+        <tr><td><span class="chip k-near">same_para</span></td><td class="num">12</td>
+          <td>another record in the gold's <span class="ja">段落</span></td>
+          <td><span class="ja">風邪</span> → 066729 風邪（ふうじゃ） 1.5721-30-06, gold is 30-07</td></tr>
+        <tr><td><span class="chip k-miss">same_item</span></td><td class="num">17</td>
+          <td>same <span class="ja">分類項目</span>, different <span class="ja">段落</span>; not lenient</td>
+          <td><span class="ja">掛ける</span> → 069855 2.1513-14-08 固定・傾き・転倒など</td></tr>
+        <tr><td><span class="chip k-miss">other</span></td><td class="num">673</td>
+          <td>the same word somewhere else in WLSP</td>
+          <td><span class="ja">魚</span> → 051220 1.4323-01-02 食料/魚・肉 (fish as food)</td></tr>
+        <tr><td><span class="chip k-decoy">decoy</span></td><td class="num">1,188</td>
+          <td>a different word's record, added as a negative</td>
+          <td><span class="ja">丁度</span> → 100206 もので 他//接続/展開</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Without the decoys that is 1,361 rows over 596 dev senses. 290 senses have a single
+      candidate and 306 have two or more. Ranking only makes sense for the 306.</p>
+    <pre class="data"># reproduce the table above (polars, from the repo root)
+import polars as pl
+df = pl.read_parquet("build/scored.parquet")
+dev = df.filter(pl.col("gold_rel").is_not_null())
+dev.group_by("gold_rel").len().sort("len", descending=True)
+pairs = dev.filter(pl.col("gold_rel") != "decoy")                    # 1,361 rows
+pairs.group_by("sense_id").len().filter(pl.col("len") &gt; 1).height    # 306 ambiguous senses</pre>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <p>The script asks two questions of the scores. Ranking: for a sense with several
+      candidates, how high does the right one sit? Thresholding: if we keep every pair
+      with <code>p_cv</code> at or above a cutoff, what share of the kept pairs are right,
+      and what share of the gold pairs did we keep? Each is answered twice, strictly and
+      leniently.</p>
+
+    <div class="wrap-x">
+      <div class="flow">
+        <div class="node"><b>scored.parquet</b><small>168,540 rows</small></div>
+        <div class="arrow">→<small>gold_rel not null</small></div>
+        <div class="node"><b>dev rows</b><small>2,549</small></div>
+        <div class="branch">
+          <div class="arrow">→<small>!= decoy</small></div>
+          <div class="arrow">→<small>== decoy</small></div>
+        </div>
+        <div class="branch">
+          <div class="node"><b>1,361 pairs</b><small>strict / lenient hit</small></div>
+          <div class="node"><b>1,188 decoys</b><small>p_cv &lt; 0.5 ?</small></div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node"><b>dev/eval.md</b><small>one block per run</small></div>
+      </div>
+    </div>
+
+    <h3>Why lenient: <span class="ja">兄弟</span></h3>
+    <p>Sense <code>wnja-09876454-n-65694</code> has exactly two candidates, the two
+      <span class="ja">兄弟</span> records from the table above. The gold is
+      きょうだい. The scorer cannot tell them apart from context (they share every
+      neighbour) and gives them 0.972 and 0.968:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>rank</th><th>record</th><th>code</th><th>gold_rel</th><th>p_cv</th><th>strict hit</th><th>lenient hit</th></tr></thead>
+      <tbody>
+        <tr class="hit"><td class="num">0</td><td class="num">016780</td><td class="num">1.2140-01-01-02</td><td><span class="chip k-exact">exact</span></td><td class="num">0.972</td><td>1</td><td>1</td></tr>
+        <tr><td class="num">1</td><td class="num">016781</td><td class="num">1.2140-01-01-03</td><td><span class="chip k-near">same_subpara</span></td><td class="num">0.968</td><td>0</td><td>1</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Here the ranking is right either way. But at threshold 0.5 both pairs are kept, so
+      strict precision counts one true and one false positive, while lenient precision
+      counts two true. Over the dev set this is why precision at 0.5 is 0.76 strict and 0.88
+      lenient: 74 kept pairs are a nearby reading or near-duplicate of the gold.</p>
+
+    <h3>A ranking worked by hand: <span class="ja">朝</span></h3>
+    <p>Sense <code>wnja-15165289-n-82149</code> is <span class="ja">朝</span> "morning".
+      WLSP has the string <span class="ja">朝</span> in five places; the gold is
+      08424, the plain <span class="ja">朝</span> in <span class="ja">時間/朝晩</span>.
+      Sorted by <code>p_cv</code>, descending, with the 0-based <code>rank</code> the
+      script assigns:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>rank</th><th>見出し番号</th><th>code · labels</th><th>headword</th><th>gold_rel</th><th>p_cv</th></tr></thead>
+      <tbody>
+        <tr><td class="num">0</td><td class="num">08425</td><td class="num">1.1635-04-02-03 · 時間/朝晩</td><td class="ja">あした（朝）</td><td><span class="chip k-near">same_subpara</span></td><td class="num">0.950</td></tr>
+        <tr class="hit"><td class="num">1</td><td class="num">08424</td><td class="num">1.1635-04-02-02 · 時間/朝晩</td><td class="ja">朝</td><td><span class="chip k-exact">exact</span></td><td class="num">0.458</td></tr>
+        <tr><td class="num">2</td><td class="num">20749</td><td class="num">1.2590-06-02-02 · 公私/固有地名</td><td class="ja">朝</td><td><span class="chip k-miss">other</span></td><td class="num">0.015</td></tr>
+        <tr><td class="num">3</td><td class="num">07782</td><td class="num">1.1623-02-01-03 · 時間/時代</td><td class="ja">朝</td><td><span class="chip k-miss">other</span></td><td class="num">0.009</td></tr>
+        <tr><td class="num">4</td><td class="num">20322</td><td class="num">1.2530-05-01-02 · 公私/国</td><td class="ja">朝</td><td><span class="chip k-miss">other</span></td><td class="num">0.007</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The three <span class="chip k-miss">other</span> rows are the dynasty and
+      place-name senses of <span class="ja">朝</span> (ちょう), and the scorer buries them.
+      The two morning records are the interesting part:</p>
+    <ul>
+      <li><strong>Strict.</strong> The only hit is the exact record at rank 1. Top-1 is a
+        miss; the reciprocal rank is 1/(1+1) = <strong>0.5</strong>.</li>
+      <li><strong>Lenient.</strong> あした（朝） is in the gold's <span class="ja">小段落</span>,
+        so rank 0 is also a hit. The best hit is rank 0: top-1 is a success and the
+        reciprocal rank is <strong>1</strong>.</li>
+      <li><strong>Threshold 0.5.</strong> Only あした（朝） (0.950) is kept. Lenient precision
+        counts it as a true positive; strict precision counts it as a false positive. The
+        exact record (0.458) is not kept, so this sense is a recall miss in <em>both</em>
+        views: recall only ever counts exact records.</li>
+    </ul>
+    <p>Top-1 accuracy is the share of senses whose best hit has rank 0; MRR is the mean
+      of the reciprocal ranks. The whole dev set, lenient, under <code>p_cv</code>:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>best hit at rank</th><th>senses</th><th>reciprocal rank</th><th>contributes</th></tr></thead>
+      <tbody>
+        <tr><td class="num">0</td><td class="num">224</td><td class="num">1</td><td class="num">224.00</td></tr>
+        <tr><td class="num">1</td><td class="num">59</td><td class="num">1/2</td><td class="num">29.50</td></tr>
+        <tr><td class="num">2</td><td class="num">12</td><td class="num">1/3</td><td class="num">4.00</td></tr>
+        <tr><td class="num">3</td><td class="num">7</td><td class="num">1/4</td><td class="num">1.75</td></tr>
+        <tr><td class="num">5</td><td class="num">2</td><td class="num">1/6</td><td class="num">0.33</td></tr>
+        <tr><td class="num">6</td><td class="num">1</td><td class="num">1/7</td><td class="num">0.14</td></tr>
+        <tr><td><strong>total</strong></td><td class="num">305</td><td></td><td class="num">259.73</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>So top-1 = 224/305 = <strong>0.734</strong> and MRR = 259.73/305 =
+      <strong>0.852</strong>, the two numbers in the <code>laptop-final lenient</code>
+      row. Strict has 207 senses at rank 0 out of 303, giving 0.683 and 0.824.</p>
+
+    <div class="callout">
+      <p><strong>Why 303 senses strict but 305 lenient?</strong> A sense is counted only if
+        it has at least one hit among its candidates. Three of the 306 ambiguous senses
+        have no <span class="chip k-exact">exact</span> candidate at all, because
+        <code>candidates.py</code> never generated the gold record. Two of them have a
+        <span class="chip k-near">same_para</span> candidate (<span class="ja">否</span>,
+        <span class="ja">端</span>) and so appear in the lenient count; the third,
+        <span class="ja">掛ける</span>, has only <span class="chip k-miss">same_item</span>
+        rows and is in neither. Senses that drop out this way do not pull the average down;
+        they vanish from it.</p>
+    </div>
+
+    <h3>Precision counts hits; recall counts exact</h3>
+    <p>At threshold 0.5, 650 of the 1,361 pairs have <code>p_cv</code> at or above 0.5.
+      Among them 497 are exact and a further 74 are same-<span class="ja">小段落</span> or
+      same-<span class="ja">段落</span>; the dev set has 587 exact pairs in all.</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>view</th><th>precision</th><th>recall</th><th>F1</th></tr></thead>
+      <tbody>
+        <tr><td>strict</td><td class="num">497 / 650 = 0.765</td><td class="num">497 / 587 = 0.847</td><td class="num">0.80</td></tr>
+        <tr><td>lenient</td><td class="num">571 / 650 = 0.878</td><td class="num">497 / 587 = 0.847</td><td class="num">0.86</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Recall is the same in both rows. The script deliberately asks "how many of the gold
+      records did we keep", never "how many of the acceptable records", because a sense
+      with the gold at 0.46 and a near-duplicate at 0.95 (like <span class="ja">朝</span>)
+      has still lost the record the annotator chose.</p>
+
+    <h3>Decoys</h3>
+    <p>Every dev sense was linked to something, so the real candidates give the scorer no
+      example of a word with no right answer. <code>candidates.py</code> adds two decoys per
+      dev sense: records of <em>other</em> words in the same <span class="ja">類</span> but
+      a different <span class="ja">分類項目</span>. <span class="ja">丁度</span> gets
+      もので (他//接続/展開) and よもや (他//判断/判断); <span class="ja">付ける</span> gets
+      破ける (用/関係/作用/破壊). The last line of the block reports what share of the
+      1,188 decoys scored below 0.5: 1,187 did (median <code>p_cv</code> 0.007), so
+      0.999. The one survivor is 丁度 → もので at 0.609.</p>
+    <pre class="data"># the senses and decoys on this page
+dev.filter(pl.col("sense_id") == "wnja-15165289-n-82149").sort("p_cv", descending=True)
+dev.filter(pl.col("gold_rel") == "decoy").sort("p_cv", descending=True).head(3)</pre>
+  </section>
+
+  <section id="code">
+    <h2>Code</h2>
+    <p>One entry point and four small functions. In the order they run:</p>
+
+    <h3>1 · What counts as a hit</h3>
+    <span class="ref">evaluate.py:32 and evaluate.py:35–46</span>
+    <pre><code>LENIENT = ("exact", "same_subpara", "same_para")
+
+def with_hit(df: pl.DataFrame, lenient: bool) -&gt; pl.DataFrame:
+    ok = LENIENT if lenient else ("exact",)
+    return df.with_columns(pl.col("gold_rel").is_in(ok).cast(pl.Int8).alias("hit"))</code></pre>
+    <p>The whole strict/lenient distinction is one tuple. <code>same_item</code> is not in
+      it, so <span class="ja">掛ける</span>'s two candidates in 2.1513-14-08 are misses in
+      both views. For <span class="ja">兄弟</span>, strict gives <code>hit</code> =
+      <code>[1, 0]</code> and lenient <code>[1, 1]</code>.</p>
+
+    <h3>2 · Ranking over ambiguous senses</h3>
+    <span class="ref">evaluate.py:49–76</span>
+    <pre><code>ranked = (
+    df.sort([pl.col("sense_id"), pl.col(score)], descending=[False, True])
+    .with_columns(
+        pl.int_range(pl.len()).over("sense_id").alias("rank"),
+        pl.len().over("sense_id").alias("n"),
+    )
+    .filter((pl.col("n") &gt; 1) &amp; (pl.col("hit") == 1))
+    .group_by("sense_id")
+    .agg(pl.col("rank").min())
+)</code></pre>
+    <p>Sort by sense, then by score descending; number the rows within each sense from 0;
+      note how many candidates the sense has; keep only hits of senses with more than one
+      candidate; take the best (lowest) rank per sense. For <span class="ja">朝</span> this
+      yields rank 1 strict and rank 0 lenient. The 290 lone-candidate senses fail
+      <code>n &gt; 1</code> and are gone, and so is any sense with no hit, which is the
+      303-versus-305 effect. Then:</p>
+    <pre><code>rank = ranked["rank"]
+return {
+    "senses": len(ranked),
+    "top1": float((rank == 0).mean()),
+    "mrr": float((1.0 / (rank + 1)).mean()),
+}</code></pre>
+    <p>Because <code>rank</code> is 0-based, <code>rank == 0</code> is top-1 and
+      <code>1 / (rank + 1)</code> is the reciprocal rank: 1 for <span class="ja">兄弟</span>,
+      0.5 for <span class="ja">朝</span> strict. An empty <code>ranked</code> returns zeros
+      rather than dividing by nothing (evaluate.py:69–70).</p>
+
+    <h3>3 · Precision, recall, F1 at a threshold</h3>
+    <span class="ref">evaluate.py:79–100</span>
+    <pre><code>kept = df.filter(pl.col(score) &gt;= threshold)
+tp = int((kept["hit"] == 1).sum())
+exact_kept = int((kept["gold_rel"] == "exact").sum())
+n_gold = int((df["gold_rel"] == "exact").sum())
+precision = tp / len(kept) if len(kept) else 0.0
+recall = exact_kept / n_gold if n_gold else 0.0</code></pre>
+    <p><code>tp</code> depends on the <code>hit</code> column, so it changes with the view;
+      <code>exact_kept</code> and <code>n_gold</code> test <code>gold_rel</code> directly and
+      do not. At 0.5: <code>len(kept)</code> = 650, <code>tp</code> = 497 strict or 571
+      lenient, <code>exact_kept</code> = 497, <code>n_gold</code> = 587. Lone-candidate
+      senses are not filtered out here: every one of the 1,361 pairs is in
+      <code>df</code>, so a lone candidate scored above the threshold counts toward
+      precision and recall even though it never entered the ranking.</p>
+
+    <h3>4 · One table row per scoring column</h3>
+    <span class="ref">evaluate.py:103–123</span>
+    <pre><code>rm = ranking_metrics(df, score)
+line = f"| {label} | {rm['senses']} | {rm['top1']:.3f} | {rm['mrr']:.3f} |"
+for t in thresholds:
+    if score == "baseline":
+        line += " |"
+    else:
+        tm = threshold_metrics(df, score, t)
+        line += f" {tm['precision']:.2f}/{tm['recall']:.2f}/{tm['f1']:.2f} |"</code></pre>
+    <p>The baseline row gets empty P/R/F1 cells: its values (0 to 42.5) are overlap
+      counts, so a probability cutoff of 0.5 would keep almost everything. Its ranking
+      columns are real, though, and are what the first row of every block shows.</p>
+
+    <h3>5 · Load, split, loop</h3>
+    <span class="ref">evaluate.py:126–152</span>
+    <pre><code>dev = pl.read_parquet(args.scored).filter(pl.col("gold_rel").is_not_null())
+decoys = dev.filter(pl.col("gold_rel") == "decoy")
+df = dev.filter(pl.col("gold_rel") != "decoy")
+...
+for view, lenient in (("strict", False), ("lenient", True)):
+    d = with_hit(df, lenient)
+    for label, col in ((f"baseline {view}", "baseline"), (f"{args.name} {view}", "p_cv")):
+        line = report_line(label, d, col, args.thresholds)
+        lines.append(line)
+        logger.info(line)</code></pre>
+    <p>168,540 rows become 2,549 dev rows, split into 1,188 decoys and 1,361 scored
+      pairs. The decoys are kept out of <code>df</code>, so they affect neither the
+      ranking nor precision. Two views times two columns gives the four main rows, each
+      also logged to stderr as it is made. The default thresholds are
+      <code>[0.3, 0.5, 0.7]</code> (evaluate.py:132).</p>
+
+    <h3>6 · The decoy line</h3>
+    <span class="ref">evaluate.py:154–161</span>
+    <pre><code>if len(decoys):
+    rejected = float((decoys["p_cv"] &lt; args.thresholds[1]).mean())
+    line = (
+        f"| decoys rejected at {args.thresholds[1]} | {len(decoys)} | {rejected:.3f} | |"
+        + " |" * len(args.thresholds)
+    )</code></pre>
+    <p>The cutoff is <code>args.thresholds[1]</code>, the <em>second</em> threshold, which is
+      0.5 by default. It is a position, not a value: <code>--thresholds 0.4 0.6</code>
+      would test the decoys at 0.6, and a single <code>--thresholds 0.5</code> would raise
+      <code>IndexError</code> here when decoys are present. A table built before decoys
+      existed has <code>len(decoys) == 0</code> and simply gets no line.</p>
+
+    <h3>7 · Append to the report</h3>
+    <span class="ref">evaluate.py:163–169</span>
+    <pre><code>new = not args.report.exists()
+with args.report.open("a", encoding="utf-8") as fh:
+    if new:
+        fh.write("# Dev-set evaluation\n\n")
+    fh.write(f"\n## {date.today().isoformat()} {args.name}\n\n{header}")
+    fh.write("\n".join(lines) + "\n")</code></pre>
+    <p>The file is opened for appending, so every run adds a dated block and nothing is
+      ever overwritten; the title line is written only when the file is new. Running the
+      script twice with the same <code>--name</code> gives two identical blocks. The
+      logging as the run goes, with <code>--name explainer-check</code> and
+      <code>--report</code> pointed at a scratch file so <code>dev/eval.md</code> was
+      untouched:</p>
+    <pre class="data">INFO | baseline strict | 303 | 0.627 | 0.791 | | | |
+INFO | explainer-check strict | 303 | 0.683 | 0.824 | 0.74/0.91/0.81 | 0.76/0.85/0.80 | 0.81/0.80/0.80 |
+INFO | baseline lenient | 305 | 0.725 | 0.843 | | | |
+INFO | explainer-check lenient | 305 | 0.734 | 0.852 | 0.84/0.91/0.88 | 0.88/0.85/0.86 | 0.92/0.80/0.85 |
+INFO | decoys rejected at 0.5 | 1188 | 0.999 | | | | |
+INFO appended to /tmp/.../scratchpad/eval.md</pre>
+    <p>And the block those same numbers made in the real report, the last one in
+      <code>dev/eval.md</code> at commit <code>b3e6896</code>:</p>
+    <pre class="data">## 2026-11-05 laptop-final
+
+| run | ambiguous senses | top-1 | MRR | P/R/F1 @0.3 | P/R/F1 @0.5 | P/R/F1 @0.7 |
+|---|---|---|---|---|---|---|
+| baseline strict | 303 | 0.627 | 0.791 | | | |
+| laptop-final strict | 303 | 0.683 | 0.824 | 0.74/0.91/0.81 | 0.76/0.85/0.80 | 0.81/0.80/0.80 |
+| baseline lenient | 305 | 0.725 | 0.843 | | | |
+| laptop-final lenient | 305 | 0.734 | 0.852 | 0.84/0.91/0.88 | 0.88/0.85/0.86 | 0.92/0.80/0.85 |
+| decoys rejected at 0.5 | 1188 | 0.999 | | | | |</pre>
+    <p>Reading across the lenient row: raising the threshold from 0.3 to 0.7 trades recall
+      (0.91 → 0.80) for precision (0.84 → 0.92), and F1 peaks at 0.3. The baseline rows
+      show the model's gain in ranking: 0.627 → 0.683 strict top-1, 0.791 → 0.824 strict
+      MRR.</p>
+  </section>
+
+  <section id="quiz" class="quiz">
+    <h2>Quiz</h2>
+    <p>Six questions on the substance. Pick one per question; the reason appears either
+      way.</p>
+    <div id="quizRoot"></div>
+  </section>
+
+  <section id="trust">
+    <h2>How much to trust this</h2>
+    <p>This page was written by an AI from the source file. That makes it fast to produce
+      and easy to refine, and fallible. A model can misread a line, invent a plausible
+      detail, or keep a number that has since changed.</p>
+    <p>So treat the code as the source of truth and this page as a guide to it:</p>
+    <ul>
+      <li>Every code claim carries an <code>evaluate.py:line</code> reference. Open it and
+        check; the file was 173 lines at commit <code>b3e6896</code>.</li>
+      <li>Every number (303/305 senses, 224 senses at rank 0, 650 kept pairs, 1,187 of
+        1,188 decoys) was computed on <code>build/scored.parquet</code> as of 2026-11-05
+        with the snippets in <code>&lt;pre class="data"&gt;</code> blocks above. The table
+        is not committed; rebuild it (<code>candidates.py</code>, <code>score.py</code>)
+        and the numbers will move, especially the single surviving decoy.</li>
+      <li>Every example sense (<span class="ja">兄弟</span>, <span class="ja">朝</span>,
+        <span class="ja">魚</span>, <span class="ja">風邪</span>, <span class="ja">掛ける</span>,
+        <span class="ja">丁度</span>) is a real row; the WLSP lines are from
+        <code>bunruidb.txt</code> ver 1.0.1.</li>
+      <li>One thing the page cannot settle: <code>sort</code> is called without
+        <code>maintain_order</code>, so candidates with an equal score (common for
+        <code>baseline</code>; <span class="ja">家</span> has three candidates at 42.5) are
+        ordered however polars happens to order them. The strict baseline numbers may move
+        by a sense or two between runs for that reason alone.</li>
+      <li>The surest check is to run the script with <code>--report</code> pointed at a
+        scratch file and compare its block with the one above.</li>
+      <li>The quiz answers are derived from the code; where one disagrees with the code,
+        the code wins. Please report it.</li>
+    </ul>
+    <p>Guard the process, not just the page: generate the explainer only from the real
+      file, pin numbers to an actual run, and have a second reader check it against the
+      source before it is shared.</p>
+  </section>
+
+  <section id="glossary">
+    <h2>Glossary</h2>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Term</th><th>What it means here</th></tr></thead>
+      <tbody>
+        <tr><td><strong>wnja sense</strong></td><td>one word in one synset of the Japanese
+          WordNet, e.g. <code>wnja-09876454-n-65694</code> = <span class="ja">兄弟</span> in
+          the sibling synset.</td></tr>
+        <tr><td><strong>WLSP record / 見出し番号</strong></td><td>one headword at one
+          position in <span class="ja">分類語彙表</span>; candidates and gold are keyed by
+          the <span class="ja">見出し番号</span>, which usually names one record.</td></tr>
+        <tr><td><strong>段落, 小段落</strong></td><td>numbered groups of related words
+          inside a <span class="ja">分類項目</span>; the second and third numbers of a code
+          such as 1.2140-01-01-02.</td></tr>
+        <tr><td><strong>dev set</strong></td><td>the 596 wnja senses with a gold WLSP record,
+          derived from the TUFS basic vocabulary by <code>build_devset.py</code>.</td></tr>
+        <tr><td><strong>ambiguous sense</strong></td><td>a dev sense with two or more
+          candidates (306 of 596); the only senses ranking is computed on.</td></tr>
+        <tr><td><strong>strict / lenient</strong></td><td>a hit is the gold record only, or
+          also any record in the gold's <span class="ja">小段落</span> or
+          <span class="ja">段落</span> (<code>LENIENT</code>, evaluate.py:32).</td></tr>
+        <tr><td><strong>top-1, MRR</strong></td><td>share of senses whose best hit is ranked
+          first; mean of 1/(rank+1) over senses. Both over senses that have a hit.</td></tr>
+        <tr><td><strong>p_cv</strong></td><td>cross-validated probability from
+          <code>score.py</code>: each dev sense is scored by a model that did not train on
+          it.</td></tr>
+        <tr><td><strong>decoy</strong></td><td>a record of a different word, added as a known
+          negative; two per dev sense, 1,188 in all.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>Explainer for the wnja-bunrigoihyou mapping project, generated from
+      <code>scripts/evaluate.py</code>. Format after
+      <a href="https://www.geoffreylitt.com/">Geoffrey Litt</a>'s
+      <a href="https://gist.github.com/geoffreylitt/a29df1b5f9865506e8952488eac3d524"><em>explain-diff</em></a>:
+      background, intuition, code, quiz.</p>
+    <p class="prov">Explainer v0, generated 2026-11-05 by Claude Fable 5.1 · source
+      <code>scripts/evaluate.py</code> at commit <code>b3e6896</code> (2026-11-05, 173 lines) ·
+      data build/scored.parquet of 2026-11-05 (laptop-final run), wnja 2.1, WLSP
+      bunruidb ver 1.0.1 · regenerate when the code changes.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const QUESTIONS = [
+    {
+      q: "Why does the script report a lenient view at all?",
+      options: [
+        {t:"WLSP often lists the same headword more than once in one 小段落 or 段落 (兄弟 きょうだい/けいてい), and the gold names only one of them", ok:true},
+        {t:"The dev set has several gold records per sense and lenient takes any of them", ok:false},
+        {t:"To give partial credit to candidates in the same 分類項目", ok:false},
+        {t:"Because p_cv is only reliable to two decimal places", ok:false},
+      ],
+      why:"The dev set names one record per TUFS concept, but WLSP repeats headwords for other readings and near-duplicate entries. LENIENT (line 32) adds same_subpara and same_para to the hit set; same_item is deliberately left out."
+    },
+    {
+      q: "Strict reports 303 ambiguous senses and lenient 305. Where do the two extra senses come from?",
+      options: [
+        {t:"Senses whose gold record is not among their candidates but which have a same_para candidate; senses with no hit at all are dropped from the count, not scored as misses", ok:true},
+        {t:"Two lone-candidate senses that lenient promotes into the ambiguous set", ok:false},
+        {t:"Two senses whose decoy scored above 0.5", ok:false},
+        {t:"Rounding: 305 senses minus two that tie exactly at rank 0", ok:false},
+      ],
+      why:"ranking_metrics keeps rows with hit == 1 and then groups by sense, so a sense with no hit simply vanishes. 否 and 端 have no exact candidate but do have a same_para one; 掛ける has only same_item rows and appears in neither count."
+    },
+    {
+      q: "In the laptop-final block, recall is identical in the strict and lenient rows (0.85 at 0.5). Why?",
+      options: [
+        {t:"Recall divides exact_kept by n_gold, and both are computed from gold_rel == \"exact\" regardless of the hit column", ok:true},
+        {t:"Coincidence: the two views happened to keep the same number of hits", ok:false},
+        {t:"Lenient recall is capped at the strict value by design", ok:false},
+        {t:"Recall is computed before with_hit is applied, so the view has not been set yet", ok:false},
+      ],
+      why:"threshold_metrics (lines 93–98) uses hit only for precision. Recall asks how many of the 587 gold records were kept, in either view, because a near-duplicate scoring high does not recover the record the annotator chose."
+    },
+    {
+      q: "朝's gold record is at rank 1 under p_cv, behind あした（朝） from the same 小段落. What does this sense contribute to strict MRR?",
+      options: [
+        {t:"1/2, because rank is 0-based and the reciprocal rank is 1 / (rank + 1)", ok:true},
+        {t:"1, because the sense is counted as a top-1 success", ok:false},
+        {t:"1/1, because the first rank is numbered 1", ok:false},
+        {t:"0, because the top candidate was not the gold", ok:false},
+      ],
+      why:"pl.int_range(pl.len()).over(\"sense_id\") numbers candidates from 0, so the exact record sits at rank 1 and contributes 1/(1+1) = 0.5. Leniently the rank-0 candidate is also a hit, so the contribution is 1."
+    },
+    {
+      q: "What does the filter (n > 1) in ranking_metrics change, and what does it leave alone?",
+      options: [
+        {t:"It drops the 290 lone-candidate senses from top-1 and MRR; they still count in precision and recall, which use every pair in df", ok:true},
+        {t:"It removes decoys, which always have n == 1", ok:false},
+        {t:"It drops lone-candidate senses from every metric in the block", ok:false},
+        {t:"It keeps only senses with more than one hit, so ties can be broken", ok:false},
+      ],
+      why:"A sense with one candidate is trivially ranked first, so it is excluded from the ranking view. threshold_metrics has no such filter: a lone candidate above the threshold is a kept pair and counts toward precision and recall."
+    },
+    {
+      q: "The last line reads \"decoys rejected at 0.5 | 1188 | 0.999\". What does 0.999 measure?",
+      options: [
+        {t:"The share of the 1,188 decoy rows whose p_cv is below args.thresholds[1], the second threshold given", ok:true},
+        {t:"The share of decoys ranked below the gold record of their sense", ok:false},
+        {t:"The mean p_cv of the decoys subtracted from 1", ok:false},
+        {t:"The precision of the model on decoy rows at threshold 0.5", ok:false},
+      ],
+      why:"Lines 154–157: rejected = mean of (decoys[\"p_cv\"] < args.thresholds[1]). Decoys are kept out of df, so they take no part in the ranking or precision; this line is their only appearance. 1,187 of 1,188 fell below 0.5; 丁度 → もので did not (0.609)."
+    },
+  ];
+
+  function shuffle(a){
+    for(let i=a.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  const root = document.getElementById('quizRoot');
+  QUESTIONS.forEach((item, qi)=>{
+    const q = document.createElement('div'); q.className='q';
+    const h = document.createElement('p'); h.className='qhead';
+    const tag = document.createElement('span'); tag.textContent='Q'+(qi+1);
+    h.appendChild(tag); h.appendChild(document.createTextNode(item.q));
+    q.appendChild(h);
+    const ul = document.createElement('ul');
+    const right = item.options.find(o=>o.ok).t;
+    shuffle(item.options.slice()).forEach(opt=>{
+      const li=document.createElement('li');
+      const b=document.createElement('button');
+      b.className='opt'; b.type='button'; b.textContent=opt.t;
+      b.addEventListener('click',()=>{
+        if(q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        b.classList.add(opt.ok?'correct':'wrong');
+        ul.querySelectorAll('button').forEach(x=>{
+          x.disabled=true;
+          if(x.textContent===right) x.classList.add('correct');
+        });
+      });
+      li.appendChild(b); ul.appendChild(li);
+    });
+    q.appendChild(ul);
+    const why=document.createElement('p'); why.className='why';
+    const lab=document.createElement('strong'); lab.textContent='Why: ';
+    why.appendChild(lab); why.appendChild(document.createTextNode(item.why));
+    q.appendChild(why);
+    root.appendChild(q);
+  });
+})();
+</script>

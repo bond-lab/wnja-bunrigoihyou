@@ -17,6 +17,7 @@ ROWS = [
     "000004,00004,A,用,活動,交わり,応接・送迎,2.3520,01,01,01,会う,会う,あう,うあ",
     "000005,00005,A,用,活動,交わり,応接・送迎,2.3520,01,01,02,会見する,会見する,かいけんする,るすんけいか",
     "000006,00006,A,体,活動,心,学習・習慣・記憶,1.3050,01,01,01,勉強,勉強,べんきょう,うょきんべ",
+    "000007,00007,A,体,生産物,食料,飲料・たばこ,1.4350,03,01,01,コーヒー,コーヒー,こおひい,いひおこ",
 ]
 
 
@@ -62,6 +63,13 @@ def test_find_candidates_suru_and_yomi(db: Wlsp) -> None:
     assert find_candidates(FakeWord("存在しない", "n"), db) == {}
 
 
+def test_find_candidates_kana_form_is_a_spelling(db: Wlsp) -> None:
+    # コーヒー is a kana form of 珈琲, so it is tried as a reading only, but WLSP
+    # writes the reading こおひい: the kana form must also be tried as a headword
+    word = FakeWord("珈琲", "n", ["珈琲", "コーヒー"])
+    assert find_candidates(word, db) == {"00007": "form"}
+
+
 def test_pair_features_counts_overlap(db: Wlsp) -> None:
     ctx = SynsetContext(forms={"会う", "出会う", "出くわす"})
     ctx.related["sim"] = {"会見する"}
@@ -102,4 +110,4 @@ def test_pick_decoys_avoid_own_word_and_categories(db: Wlsp) -> None:
     decoys = pick_decoys({"会う"}, {"2.1550"}, "v", db, 2, random.Random(0))
     assert decoys and all(db.senses[m].item_key == "2.3520" for m in decoys)
     assert "00004" not in decoys  # 会う in 2.3520 has the word's own form
-    assert pick_decoys({"青"}, set(), "n", db, 1, random.Random(0)) == ["00006"]
+    assert sorted(pick_decoys({"青"}, set(), "n", db, 2, random.Random(0))) == ["00006", "00007"]

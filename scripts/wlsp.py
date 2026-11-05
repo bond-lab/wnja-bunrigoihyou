@@ -246,7 +246,7 @@ class Wlsp:
         return db
 
     def lookup(self, form: str) -> list[str]:
-        """Find senses whose written form matches, falling back to the reading.
+        """Find senses whose written form matches (readings are in ``by_yomi``).
 
         Args:
             form: A lemma or written form

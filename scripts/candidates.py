@@ -198,6 +198,12 @@ def find_candidates(word: wn.Word, db: Wlsp) -> dict[str, str]:
         for mid in db.by_form.get(lemma[:-2], []):
             found.setdefault(mid, "suru")
     if not found:
+        # A kana form that is itself a WLSP headword (コーヒー for 珈琲) is a
+        # spelling match; WLSP writes its reading こおひい, so by_yomi would
+        # miss it.  Otherwise treat the kana forms as readings.
+        for y in kana_forms(word):
+            for mid in db.by_form.get(y, []):
+                found.setdefault(mid, "form")
         for y in kana_forms(word):
             for mid in db.by_yomi.get(y, []):
                 found.setdefault(mid, "yomi")

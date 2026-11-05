@@ -1,0 +1,842 @@
+<title>Scoring wnja to WLSP</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one reading column, tables and code scroll inside their own boxes. */
+  :root{
+    --ground:#f3f4f8; --surface:#ffffff; --ink:#1b2030; --muted:#5b6377;
+    --accent:#3d4fa6; --accent-soft:#e4e8f6; --hair:#dde1ea; --code-bg:#eceef4;
+    --pos:#2b7a4b; --neg:#b23e3e; --decoy:#a06a12; --unl:#6b7a99;
+    --serif:"Charter","Bitstream Charter","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP","Hiragino Sans",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#12151c; --surface:#1a1e28; --ink:#e6e8ef; --muted:#9aa3b8;
+      --accent:#8fa0ea; --accent-soft:#232a45; --hair:#2a3040; --code-bg:#161a24;
+      --pos:#5fbf85; --neg:#e07070; --decoy:#d9a04a; --unl:#8f9ec0;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#12151c; --surface:#1a1e28; --ink:#e6e8ef; --muted:#9aa3b8;
+    --accent:#8fa0ea; --accent-soft:#232a45; --hair:#2a3040; --code-bg:#161a24;
+    --pos:#5fbf85; --neg:#e07070; --decoy:#d9a04a; --unl:#8f9ec0;
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--serif);
+    line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .wrap{max-width:46rem;margin:0 auto;padding-block:3rem 5rem;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+  .eyebrow{font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
+  h1{font-size:2.1rem;line-height:1.15;margin:0 0 .4rem;text-wrap:balance;font-weight:600}
+  .lede{font-size:1.12rem;color:var(--muted);margin:0 0 1.4rem;text-wrap:balance}
+  .meta{font-family:var(--mono);font-size:.78rem;color:var(--muted);
+    border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);
+    padding:.6rem 0;display:flex;gap:1.2rem;flex-wrap:wrap}
+
+  nav.toc{margin:2rem 0 2.5rem;font-family:var(--sans);font-size:.9rem}
+  nav.toc ol{list-style:none;counter-reset:s;padding:0;margin:0;display:grid;gap:.3rem}
+  nav.toc li{counter-increment:s}
+  nav.toc a{color:var(--ink);text-decoration:none;display:flex;gap:.6rem;padding:.3rem .5rem;border-radius:6px}
+  nav.toc a::before{content:counter(s,decimal-leading-zero);color:var(--accent);
+    font-variant-numeric:tabular-nums;font-weight:600}
+  nav.toc a:hover{background:var(--accent-soft)}
+
+  section{margin:3rem 0}
+  h2{font-size:1.5rem;margin:0 0 .8rem;font-weight:600;padding-bottom:.3rem;
+    border-bottom:2px solid var(--accent-soft);text-wrap:balance}
+  h3{font-size:1.06rem;font-family:var(--sans);font-weight:600;margin:1.6rem 0 .4rem}
+  p{margin:.8rem 0}
+  a{color:var(--accent)}
+  strong{font-weight:600}
+  .ja{font-family:var(--sans)}
+  .en{color:var(--muted)}
+
+  code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:.1em .35em;border-radius:4px}
+  pre{font-family:var(--mono);font-size:.8rem;line-height:1.5;background:var(--code-bg);
+    border:1px solid var(--hair);border-radius:10px;padding:1rem 1.1rem;overflow-x:auto;
+    white-space:pre;margin:1rem 0}
+  pre code{background:none;padding:0;font-size:1em}
+  pre.data{background:var(--surface)}
+  pre.query{border-left:3px solid var(--accent)}
+  pre.query::before{content:"query";display:block;font-family:var(--sans);font-size:.68rem;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:.4rem}
+  .ref{font-family:var(--mono);font-size:.76rem;color:var(--muted);display:block;margin:-.4rem 0 .9rem}
+
+  .chip{font-family:var(--mono);font-size:.72rem;font-weight:600;padding:.1em .5em;
+    border-radius:999px;white-space:nowrap;border:1px solid currentColor}
+  .k-pos{color:var(--pos)} .k-neg{color:var(--neg)} .k-decoy{color:var(--decoy)} .k-unl{color:var(--unl)}
+
+  table.toy{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.84rem;font-family:var(--sans)}
+  table.toy th,table.toy td{text-align:left;padding:.45rem .55rem;border-bottom:1px solid var(--hair);vertical-align:top}
+  table.toy th{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  table.toy td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  table.toy tr.gold td{background:color-mix(in srgb,var(--pos) 9%,transparent)}
+  .wrap-x{overflow-x:auto;min-width:0}
+
+  .flow{display:flex;align-items:stretch;flex-wrap:wrap;gap:.5rem;justify-content:center;
+    margin:1.4rem 0;font-family:var(--sans);font-size:.8rem}
+  .node{background:var(--surface);border:1px solid var(--hair);border-radius:8px;padding:.5rem .7rem;
+    text-align:center;box-shadow:0 1px 0 var(--hair);min-width:0}
+  .node b{display:block;color:var(--accent);font-size:.88rem}
+  .node small{color:var(--muted);font-family:var(--mono);font-size:.7rem;display:block}
+  .arrow{color:var(--muted);font-weight:700;align-self:center}
+  .arrow small{display:block;font-size:.64rem;font-family:var(--mono);font-weight:400;color:var(--accent)}
+  .branch{display:flex;flex-direction:column;gap:.5rem;justify-content:center}
+
+  /* number line for the rel_* trick: one series, to scale */
+  .line{position:relative;height:3.6rem;margin:1rem .5rem 1.6rem;font-family:var(--sans);font-size:.72rem}
+  .line .axis{position:absolute;left:0;right:0;top:1.6rem;height:2px;background:var(--hair)}
+  .line .tick{position:absolute;top:1.3rem;width:1px;height:.8rem;background:var(--muted)}
+  .line .tick span{position:absolute;top:1rem;left:50%;transform:translateX(-50%);color:var(--muted);
+    font-family:var(--mono);white-space:nowrap}
+  .line .mark{position:absolute;top:1.6rem;width:10px;height:10px;border-radius:50%;
+    background:var(--accent);transform:translate(-50%,-50%);border:2px solid var(--surface)}
+  .line .mark.gold{background:var(--pos);width:14px;height:14px}
+  .line .band{position:absolute;top:.2rem;height:.9rem;background:var(--accent-soft);border-radius:4px}
+  .line .band span{position:absolute;left:50%;top:-1.1rem;transform:translateX(-50%);color:var(--accent);white-space:nowrap}
+
+  .callout{background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;
+    padding:.8rem 1rem;margin:1.2rem 0}
+  .callout p{margin:.3rem 0}
+  .caveat{font-family:var(--sans);font-size:.86rem;line-height:1.45;color:var(--ink);
+    background:color-mix(in srgb,var(--decoy) 12%,transparent);
+    border:1px solid color-mix(in srgb,var(--decoy) 45%,transparent);
+    border-radius:8px;padding:.7rem .9rem;margin:1.2rem 0}
+  .caveat b{color:var(--decoy)}
+
+  .quiz .q{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:1.1rem 1.2rem;margin:1rem 0}
+  .quiz .qhead{font-weight:600;margin:0 0 .7rem;font-family:var(--sans);font-size:1rem}
+  .quiz .qhead span{color:var(--accent);font-family:var(--mono);margin-right:.5rem}
+  .quiz ul{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
+  .quiz button.opt{width:100%;text-align:left;font:inherit;font-family:var(--sans);font-size:.9rem;
+    background:var(--ground);color:var(--ink);cursor:pointer;border:1px solid var(--hair);
+    border-radius:8px;padding:.6rem .8rem;transition:border-color .15s,background .15s}
+  .quiz button.opt:hover{border-color:var(--accent)}
+  .quiz button.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .quiz button.opt.correct{border-color:var(--pos);background:color-mix(in srgb,var(--pos) 14%,transparent)}
+  .quiz button.opt.wrong{border-color:var(--neg);background:color-mix(in srgb,var(--neg) 12%,transparent)}
+  .quiz button.opt[disabled]{cursor:default}
+  .quiz .why{font-size:.88rem;color:var(--muted);margin:.7rem 0 0;padding-left:.6rem;border-left:2px solid var(--hair);display:none}
+  .quiz .q.answered .why{display:block}
+
+  footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--hair);font-family:var(--sans);font-size:.82rem;color:var(--muted)}
+  .prov{font-family:var(--mono);font-size:.74rem;line-height:1.55;margin-top:.7rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">wnja-bunrigoihyou · scripts · Code explainer</p>
+    <h1>Scoring the wnja to WLSP candidates</h1>
+    <p class="lede">How <code>score.py</code> turns 168,540 candidate pairs into 92,836
+      links with a confidence: derived features, a small boosted-tree model, and
+      cross-validation grouped by sense.</p>
+    <div class="meta">
+      <span>scripts/score.py</span><span>284 lines</span>
+      <span>deps: polars, numpy, scikit-learn</span>
+      <span>run: uv run scripts/score.py</span>
+    </div>
+    <p class="caveat"><b>Generated by an AI.</b> This page was written from the code and
+      can be wrong: a misread line, an invented detail, a stale number. Trust the code,
+      not this page: check anything that matters against <code>scripts/score.py</code>
+      and run it. Every example and count here was read from
+      <code>build/scored.parquet</code> and <code>wnja-wlsp.tsv</code> as built on
+      2026-11-05 at commit <code>b3e6896</code>; rebuild the candidates or add a feature
+      column and the numbers move. See <a href="#trust">How much to trust this</a>.</p>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#background">Background: pairs, features, labels</a></li>
+      <li><a href="#intuition">Intuition: one word by hand</a></li>
+      <li><a href="#code">Code: how the script runs</a></li>
+      <li><a href="#quiz">Quiz</a></li>
+      <li><a href="#trust">How much to trust this</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <p>The project links two Japanese sense inventories. A <strong>wnja sense</strong> is
+      one word in one synset of the Japanese WordNet 2.1, such as
+      <code>wnja-02018049-v-10632</code>: <span class="ja">乗る</span> in the synset
+      <span class="ja">乗船・搭乗・乗る・乗り込む・乗車 …</span>
+      <span class="en">「（電車、バス、船、航空機など）に乗り込む」</span>, ILI
+      <code>i31829</code>. A <strong>WLSP record</strong> is one line of the
+      <span class="ja">分類語彙表</span> (Word List by Semantic Principles), identified by a
+      record ID and a code such as <code>2.1541-02-01-01</code>, read as
+      <span class="ja">類</span>.<span class="ja">分類項目</span>-<span class="ja">段落</span>-<span class="ja">小段落</span>-<span class="ja">語番号</span>:
+      class 2 (<span class="ja">用</span>, verbs), item 1541
+      <span class="ja">乗り降り・浮き沈み</span> "boarding and alighting, floating and
+      sinking", paragraph 02, sub-paragraph 01, word 01. The labels column spells out the
+      path: <span class="ja">用/関係/作用/乗り降り・浮き沈み</span>.</p>
+
+    <p>The headword <span class="ja">乗る</span> appears in several WLSP records, and so do
+      its written variants. <code>candidates.py</code> pairs each wnja sense with every
+      WLSP record whose headword matches the word's lemma, a form, a <span class="ja">する</span>
+      stem or (for kana words) the reading, and writes one row per pair to
+      <code>build/candidates.parquet</code>. For <span class="ja">乗る</span> that is five
+      real candidates:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>record</th><th>code</th><th>labels</th><th>headword</th><th>lex</th></tr></thead>
+      <tbody>
+        <tr><td class="num">072074</td><td class="num">2.1541-02-01-01</td><td class="ja">用/関係/作用/乗り降り・浮き沈み</td><td class="ja">乗る</td><td><code>lemma</code></td></tr>
+        <tr><td class="num">067149</td><td class="num">2.1112-02-08-01</td><td class="ja">用/関係/類/因果</td><td class="ja">乗る</td><td><code>lemma</code></td></tr>
+        <tr><td class="num">086567</td><td class="num">2.3683-02-08-03</td><td class="ja">用/活動/待遇/脅迫・中傷・愚弄など</td><td class="ja">乗る</td><td><code>lemma</code></td></tr>
+        <tr><td class="num">072126</td><td class="num">2.1541-05-02-02</td><td class="ja">用/関係/作用/乗り降り・浮き沈み</td><td class="ja">載る</td><td><code>form</code></td></tr>
+        <tr><td class="num">088292</td><td class="num">2.3832-03-01-01</td><td class="ja">用/活動/事業/出版・放送</td><td class="ja">載る</td><td><code>form</code></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Only the first is the sense of boarding a vehicle. The second is
+      <span class="ja">乗る</span> "be carried along by" (cause and effect), the third
+      "be taken in by (provocation)", and the two <span class="ja">載る</span> records are
+      "be placed on" and "be printed in". The scorer's job is to give the first a high
+      probability and the rest a low one, for all 96,223 senses in the table. The
+      candidate table has 168,540 rows and 59 columns; the number of candidates per sense
+      falls off fast:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th><code>n_cands</code></th><th>senses</th><th>examples</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td class="num">59,848</td><td><span class="ja">実体, 西暦, 新しい</span></td></tr>
+        <tr><td class="num">2</td><td class="num">22,204</td><td><span class="ja">可能, 息衝く, 既に</span></td></tr>
+        <tr><td class="num">3</td><td class="num">7,249</td><td></td></tr>
+        <tr><td class="num">4</td><td class="num">3,291</td><td><span class="ja">魚, 夜, 肉</span></td></tr>
+        <tr><td class="num">5</td><td class="num">1,317</td><td><span class="ja">乗る</span></td></tr>
+        <tr><td class="num">6 to 46</td><td class="num">2,314</td><td><span class="ja">手</span> (11), <span class="ja">本</span> (20), <span class="ja">然う</span> (28)</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>The features the table already carries</h3>
+    <p>Every numeric column that is not an identifier or a label becomes a feature
+      (<a href="#c-features">feature_columns</a>). Those present in this build:</p>
+    <ul>
+      <li><strong>How the strings matched.</strong> <code>lex</code> is a string column
+        (<code>lemma</code> 114,567 rows, <code>yomi</code> 43,357, <code>form</code> 9,836,
+        <code>suru</code> 780) and <code>pos_ok</code> says whether the wnja POS agrees with
+        the WLSP class. <span class="ja">浴する</span> matched the noun record
+        <span class="ja">浴</span> by <code>suru</code>; <span class="ja">丁度</span>
+        matched <span class="ja">ちょうど</span> and the furniture word
+        <span class="ja">調度</span> by <code>yomi</code>.</li>
+      <li><strong>Structural overlap.</strong> Sixteen <code>ov_*</code> counts: how many of
+        the synset's members (<code>syn</code>), hypernyms (<code>hyper</code>), hyponyms
+        (<code>hypo</code>), co-hyponyms (<code>sib</code>), similar (<code>sim</code>) and
+        antonym (<code>ant</code>) synsets have a word in the candidate's
+        <span class="ja">小段落</span> (<code>subpara</code>), <span class="ja">段落</span>
+        (<code>para</code>), <span class="ja">分類項目</span> (<code>item</code>) or
+        <span class="ja">中項目</span> (<code>middle</code>). For the boarding record of
+        <span class="ja">乗る</span>: <code>ov_syn_para=3</code>, <code>ov_syn_item=3</code>,
+        <code>ov_hyper_item=1</code>, <code>ov_hyper_middle=4</code>,
+        <code>ov_hypo_middle=1</code>, <code>ov_ant_item=2</code>. Beside them the sizes of
+        the neighbourhoods (<code>n_syn=10</code>, <code>n_hyper=14</code> …) and of the
+        WLSP groups (<code>size_subpara=2</code>, <code>size_para=27</code>,
+        <code>size_item=132</code>, <code>size_middle=5328</code>), plus
+        <code>yomi_match</code>, <code>has_yomi</code> and <code>go_no</code>.</li>
+      <li><strong>Tier columns.</strong> <code>features_chive.py</code> added nine
+        <code>chive_*</code> word-vector cosines (null for 11,957 to 25,748 rows where a
+        word has no vector; <code>chive_has</code> marks the 3,299 rows with none) and
+        <code>features_sent.py</code> added <code>sent_multilingual_e5_small_cat</code>,
+        <code>_sub</code> and <code>_ctx</code>, the cosines between the synset text and
+        the record's category path, headword neighbours and wider context.</li>
+      <li><strong>Priors.</strong> <code>n_cands</code>, <code>n_senses</code> and
+        <code>sense_rank</code> describe the word, not the pair; they are excluded
+        unless <code>--priors</code> is given (<a href="#c-features">why</a>).</li>
+    </ul>
+
+    <h3>The labels</h3>
+    <p>The dev set (<code>dev/devset.tsv</code>, 734 rows from the TUFS basic vocabulary)
+      gives a gold WLSP record for 596 wnja senses. <code>candidates.py</code> turns that
+      into two columns. <code>gold_rel</code> says how a candidate relates to the gold
+      record, and <code>gold</code> is the training label derived from it:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th><code>gold_rel</code></th><th>rows</th><th><code>gold</code></th><th>example (sense <span class="ja">乗る</span> or <span class="ja">魚</span>)</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip k-pos">exact</span></td><td class="num">587</td><td class="num">1</td><td><span class="ja">乗る</span> → 072074 <span class="ja">乗り降り・浮き沈み</span></td></tr>
+        <tr><td><span class="chip k-neg">other</span></td><td class="num">673</td><td class="num">0</td><td><span class="ja">乗る</span> → 067149 <span class="ja">因果</span>, 086567 <span class="ja">脅迫・中傷・愚弄など</span></td></tr>
+        <tr><td><span class="chip k-decoy">decoy</span></td><td class="num">1,188</td><td class="num">0</td><td><span class="ja">乗る</span> → <span class="ja">取り繕う</span> 2.3071, <span class="ja">察する</span> 2.3066: records of <em>other</em> words in the same <span class="ja">類</span></td></tr>
+        <tr><td><span class="chip k-unl">same_item</span></td><td class="num">17</td><td class="num">null</td><td><span class="ja">乗る</span> → 072126 <span class="ja">載る</span>, same <span class="ja">分類項目</span> 1541 as the gold</td></tr>
+        <tr><td><span class="chip k-unl">same_subpara</span> / <span class="chip k-unl">same_para</span></td><td class="num">72 / 12</td><td class="num">null</td><td><span class="ja">魚</span> → 063576, the <span class="ja">魚</span> entry next to the gold 063577</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>So 2,448 rows are labelled (587 positive, 1,861 negative) and 101 dev rows in the
+      gold's own group are left <em>unlabelled</em>: WLSP lists the same headword more
+      than once nearby, and calling those negatives would teach the model to reject
+      genuine many-to-many links. The decoys exist because 290 of the 596 dev senses have
+      a single candidate, which is the gold by construction; without decoys they would
+      carry no negative at all. The decoy/other/same_* classes are made in
+      <code>candidates.py</code>; this script only reads <code>gold</code> and
+      <code>gold_rel</code>.</p>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <p>Each pair is scored on its own: a row of numbers in, a probability out. The script
+      never asks "which candidate is best for this sense"; it asks "is this pair a link".
+      That is what lets a sense keep two links (4,266 senses do) and lets a sense with one
+      candidate still get a low score.</p>
+
+    <div class="wrap-x">
+      <div class="flow">
+        <div class="node"><b>candidates.parquet</b><small>168,540 rows · 59 cols</small></div>
+        <div class="arrow">→<small>add_derived</small></div>
+        <div class="node"><b>+ derived columns</b><small>lex_ pp_ fr_ any_ log_ rel_</small></div>
+        <div class="arrow">→<small>fit_and_predict</small></div>
+        <div class="branch">
+          <div class="node"><b>GroupKFold ×5</b><small>p_cv on 2,549 dev rows</small></div>
+          <div class="node"><b>refit on 2,448</b><small>p on every row</small></div>
+        </div>
+        <div class="arrow">→<small>evidence, write</small></div>
+        <div class="branch">
+          <div class="node"><b>wnja-wlsp.tsv</b><small>p ≥ 0.5 · 92,836</small></div>
+          <div class="node"><b>review.tsv</b><small>0.2 ≤ p &lt; 0.5 · 20,087</small></div>
+          <div class="node"><b>scored.parquet</b><small>all rows · 132 cols</small></div>
+        </div>
+      </div>
+    </div>
+
+    <h3><span class="ja">乗る</span> by hand</h3>
+    <p>The seven rows of sense <code>wnja-02018049-v-10632</code> (five candidates and two
+      decoys) after scoring, sorted by <code>p</code>. <code>baseline</code> is the
+      hand-weighted overlap score the model replaced; <code>p_cv</code> is the probability
+      from a model that never saw this sense; <code>p</code> is from the final model.</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>record</th><th>headword · item</th><th><code>gold_rel</code></th>
+        <th><code>baseline</code></th><th><code>chive_para_max</code></th><th><code>…e5_small_ctx</code></th>
+        <th><code>rel_…ctx</code></th><th><code>p_cv</code></th><th><code>p</code></th></tr></thead>
+      <tbody>
+        <tr class="gold"><td class="num">072074</td><td class="ja">乗る · 乗り降り・浮き沈み</td><td><span class="chip k-pos">exact</span></td>
+          <td class="num">10.5</td><td class="num">1.000</td><td class="num">0.927</td><td class="num">0.000</td><td class="num">0.786</td><td class="num">0.821</td></tr>
+        <tr><td class="num">067149</td><td class="ja">乗る · 因果</td><td><span class="chip k-neg">other</span></td>
+          <td class="num">13.5</td><td class="num">0.372</td><td class="num">0.876</td><td class="num">−0.051</td><td class="num">0.452</td><td class="num">0.337</td></tr>
+        <tr><td class="num">072126</td><td class="ja">載る · 乗り降り・浮き沈み</td><td><span class="chip k-unl">same_item</span></td>
+          <td class="num">4.5</td><td class="num">0.570</td><td class="num">0.905</td><td class="num">−0.022</td><td class="num">0.247</td><td class="num">0.281</td></tr>
+        <tr><td class="num">086567</td><td class="ja">乗る · 脅迫・中傷・愚弄など</td><td><span class="chip k-neg">other</span></td>
+          <td class="num">0.5</td><td class="num">0.679</td><td class="num">0.897</td><td class="num">−0.030</td><td class="num">0.173</td><td class="num">0.079</td></tr>
+        <tr><td class="num">088292</td><td class="ja">載る · 出版・放送</td><td><span class="chip k-neg">other</span></td>
+          <td class="num">0.5</td><td class="num">0.570</td><td class="num">0.870</td><td class="num">−0.057</td><td class="num">0.017</td><td class="num">0.017</td></tr>
+        <tr><td class="num">078756</td><td class="ja">取り繕う · 論理・証明・偽り…</td><td><span class="chip k-decoy">decoy</span></td>
+          <td class="num">0.5</td><td class="num">0.406</td><td class="num">0.873</td><td class="num">−0.054</td><td class="num">0.007</td><td class="num">0.006</td></tr>
+        <tr><td class="num">078254</td><td class="ja">察する · 判断・推測・評価</td><td><span class="chip k-decoy">decoy</span></td>
+          <td class="num">0.5</td><td class="num">0.274</td><td class="num">0.875</td><td class="num">−0.052</td><td class="num">0.007</td><td class="num">0.006</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Two things to notice. The baseline gets this word <em>wrong</em>: the
+      <span class="ja">因果</span> record scores 13.5 because two synset members sit in its
+      <span class="ja">小段落</span> (weight 3 each), against 10.5 for the right record.
+      The model gets it right, and the margin comes mostly from the embedding columns: the
+      boarding record's category text is closest to the synset (e5 <code>ctx</code> 0.927,
+      chiVe <code>para_max</code> 1.0). And the only link written is the gold one: 0.821 is
+      the one value at or above 0.5.</p>
+
+    <h3>The <code>rel_*</code> trick</h3>
+    <p>Look at the e5 <code>ctx</code> column above: 0.870 to 0.927. Over the whole table
+      the 5th to 95th percentile of <code>sent_multilingual_e5_small_cat</code> is 0.812 to
+      0.888, and a decoy about deceit scores 0.873. Sentence-embedding cosines sit in a
+      narrow band, so a tree asked "is the cosine above 0.88?" learns little. What
+      separates the candidates of one sense is their <em>order</em>, so
+      <a href="#c-derived">add_derived</a> subtracts the best value of the same sense:
+      <code>rel_x = x − max(x) over sense_id</code>. The best candidate gets 0 and the
+      rest go negative. The same seven rows on the <code>ctx</code> cosine, to scale:</p>
+    <div class="line" aria-label="e5 ctx cosines of the seven rows of 乗る on a 0 to 1 axis">
+      <div class="axis"></div>
+      <div class="tick" style="left:0%"><span>0</span></div>
+      <div class="tick" style="left:50%"><span>0.5</span></div>
+      <div class="tick" style="left:100%"><span>1</span></div>
+      <div class="band" style="left:87%;width:5.7%"><span>0.870 to 0.927</span></div>
+      <div class="mark" style="left:87.0%" title="載る 出版・放送 0.870"></div>
+      <div class="mark" style="left:87.3%" title="取り繕う 0.873"></div>
+      <div class="mark" style="left:87.5%" title="察する 0.875"></div>
+      <div class="mark" style="left:87.6%" title="乗る 因果 0.876"></div>
+      <div class="mark" style="left:89.7%" title="乗る 脅迫 0.897"></div>
+      <div class="mark" style="left:90.5%" title="載る 乗り降り 0.905"></div>
+      <div class="mark gold" style="left:92.7%" title="乗る 乗り降り 0.927 (gold)"></div>
+    </div>
+    <p>The large green dot is the gold record; the whole spread is 0.057 on a 0 to 1 axis.
+      After subtraction it is 0 for the gold and −0.022 to −0.057 for the rest, which a
+      depth-2 tree splits easily. In the fitted model the raw
+      <code>sent_multilingual_e5_small_cat</code> has importance 0.002 and its
+      <code>rel_</code> twin 0.072; the top feature overall is
+      <code>rel_sent_multilingual_e5_small_ctx</code> at 0.35 (<a href="#c-weights">top_weights</a>).
+      chiVe cosines spread more (5th to 95th percentile of <code>chive_syn_item</code>: 0.30 to
+      0.84), but their <code>rel_</code> versions also lead their raw ones.</p>
+
+    <h3>Two edges to know about</h3>
+    <p><strong>Many-to-many is allowed.</strong> No feature says how many candidates a
+      word has, so two records can both pass. <span class="ja">可能</span>
+      (<code>wnja-01821266-a-0</code>) is linked to both <code>1.1346-01-02-01</code>
+      (noun class, <span class="ja">体/関係/様相/難易・安危</span>, p 0.616) and
+      <code>3.1346-01-01-01</code> (adjective class, p 0.55). In all, 4,266 senses have more
+      than one link; 32,993 of the 92,836 links come from senses with several
+      candidates.</p>
+    <p><strong>Lone candidates are mostly unverified.</strong> 59,848 senses have exactly
+      one real candidate, and 59,843 of those pairs score at or above 0.5 (median 0.934).
+      Only five fall below, such as <span class="ja">成る</span> → <span class="ja">成る</span>
+      2.1220 <span class="ja">成立</span> at 0.281 and <span class="ja">お腹</span> →
+      <span class="ja">御中</span> (a letter-writing term, <code>form</code> match, POS
+      mismatch) at 0.04. The dev set has no single-candidate sense whose only candidate is
+      wrong (every dev word was linked), so the model has never seen that case. The decoys
+      show it can reject unrelated records (1 of 1,188 decoys passes:
+      <span class="ja">丁度</span> → <span class="ja">もので</span>, a <code>yomi</code>
+      match at 0.572), but a lone candidate that is the same word in a different sense is
+      harder and unmeasured. That is why <code>n_cands</code> is kept in the output: filter
+      on it, or sample lone links with <code>judge_claude.py --single-sample</code>.</p>
+    <p><strong>And the gold is not always right.</strong> <span class="ja">魚</span> in
+      <code>wnja-07775375-n</code> <span class="en">「食料として用いられる、魚の肉」</span>
+      (fish as food) has four candidates. The gold is 063577 in
+      <span class="ja">1.5504 魚類</span> (the animal), because the TUFS concept
+      <span class="ja">魚</span> links to both the animal and the food synset. The model
+      prefers the food record 051220 <span class="ja">1.4323 魚・肉</span> (p 0.49) over the
+      gold (0.48), and the only link written is 063576, the neighbouring
+      <span class="ja">魚</span> entry in the gold's <span class="ja">小段落</span> (0.69),
+      which the lenient evaluation counts as correct. Reading dev disagreements by hand is
+      part of the job.</p>
+  </section>
+
+  <section id="code">
+    <h2>Code</h2>
+    <p>Nine parts, in the order they run. Line numbers refer to <code>scripts/score.py</code>
+      at commit <code>b3e6896</code>.</p>
+
+    <h3>1 · Which columns are not features</h3>
+    <span class="ref">score.py:38–56</span>
+    <p>Three sets drive everything downstream: the identifier columns that go into the
+      output TSV, the columns that must never be features (the IDs plus labels and the
+      model's own outputs), and the priors that are features only on request.</p>
+    <pre><code>NON_FEATURES = set(ID_COLUMNS) | {"lex", "gold", "gold_rel", "p", "p_cv", "baseline", "evidence"}
+# Priors about how many candidates or senses a word has.  They help top-1
+# accuracy but penalise genuine many-to-many links, so they are off by default.
+PRIORS = {"n_cands", "n_senses", "sense_rank", "inv_cands", "inv_senses"}
+LEX_TYPES = ("lemma", "form", "suru", "yomi")
+POS_PAIRS = tuple(f"{a}{b}" for a in "nvar" for b in "nvar")</code></pre>
+    <p><code>POS_PAIRS</code> is the sixteen strings <code>nn, nv, na, nr, vn, … rr</code>.
+      The table has 321 rows whose wnja POS is <code>x</code> (<span class="ja">ふん</span>
+      and other interjections); they match none of the sixteen and get all-zero one-hots.</p>
+
+    <h3 id="c-derived">2 · Derived features</h3>
+    <span class="ref">score.py:59–88</span>
+    <p>One <code>with_columns</code> call adds every derived column. The first block is
+      fixed: a one-hot per match type, a one-hot per POS pair, and the two inverse priors.
+      The loop then walks the existing columns and derives from each by prefix.</p>
+    <pre><code>for c in df.columns:
+    if c.startswith("ov_"):
+        rel = c.split("_", 2)[1]
+        cols.append((pl.col(c) / pl.max_horizontal(pl.col(f"n_{rel}"), 1)).alias(f"fr_{c[3:]}"))
+        cols.append((pl.col(c) > 0).cast(pl.Int8).alias(f"any_{c[3:]}"))
+    elif c.startswith("size_"):
+        cols.append(pl.col(c).log1p().alias(f"log_{c}"))
+    elif c.startswith(("chive_", "sent_")) and c != "chive_has":
+        cols.append((pl.col(c) - pl.col(c).max().over("sense_id")).alias(f"rel_{c}"))</code></pre>
+    <p>For <code>ov_syn_para</code>, <code>rel</code> is <code>syn</code>, so the fraction
+      divides by <code>n_syn</code> (floored at 1 so an empty neighbourhood does not divide
+      by zero). What the gold row of <span class="ja">乗る</span> gains, with the inputs it
+      came from:</p>
+    <pre class="data">lex="lemma"                     -> lex_lemma=1  lex_form=0  lex_suru=0  lex_yomi=0
+pos="v", pos_wlsp="v"           -> pp_vv=1, the other fifteen pp_* = 0
+n_cands=5, n_senses=11          -> inv_cands=0.2  inv_senses=0.091   (priors: not used)
+ov_syn_para=3,  n_syn=10        -> fr_syn_para=0.3    any_syn_para=1
+ov_hyper_item=1, n_hyper=14     -> fr_hyper_item=0.071 any_hyper_item=1
+ov_ant_item=2,  n_ant=2         -> fr_ant_item=1.0    any_ant_item=1
+size_middle=5328                -> log_size_middle=8.581   (= ln 5329)
+sent_..._ctx=0.927, sense max 0.927 -> rel_sent_multilingual_e5_small_ctx=0.000
+chive_para_max=0.372 on the 因果 row, sense max 1.0 -> rel_chive_para_max=-0.628</pre>
+    <p>The <code>rel_</code> branch deliberately skips <code>chive_has</code>, a 0/1 flag,
+      and the <code>.over("sense_id")</code> window makes the subtraction per sense without
+      a group-by and join. Null cosines (rows with no chiVe vector) stay null here and are
+      filled with 0 at training time (<a href="#c-fit">fit_and_predict</a>).</p>
+
+    <h3 id="c-features">3 · Picking the feature columns</h3>
+    <span class="ref">score.py:91–106</span>
+    <pre><code>excluded = NON_FEATURES if priors else NON_FEATURES | PRIORS
+return [
+    c
+    for c, dtype in zip(df.columns, df.dtypes, strict=True)
+    if c not in excluded and dtype.is_numeric()
+]</code></pre>
+    <p>Any numeric column not excluded is a feature, in table order, which is what lets
+      later scripts add <code>chive_*</code>, <code>sent_*</code> or <code>judge_*</code>
+      columns without touching this file. In this build that is <strong>109</strong>
+      features: 30 structural, 9 chiVe, 3 e5, 4 <code>lex_</code>, 16 <code>pp_</code>,
+      16 <code>fr_</code>, 16 <code>any_</code>, 4 <code>log_</code> and 11
+      <code>rel_</code>; <code>--priors</code> would make it 114. The priors are off
+      because a count of candidates says "this word is ambiguous", which pushes every
+      pair of an ambiguous word down and every lone pair up, regardless of the pair
+      itself.</p>
+    <pre class="query data">import polars as pl, sys; sys.path.insert(0, "scripts"); import score
+df = pl.read_parquet("build/scored.parquet")        # already has the derived columns
+feats = score.feature_columns(df)
+len(feats), len(score.feature_columns(df, priors=True))    # (109, 114)</pre>
+
+    <h3>4 · The hand-weighted baseline</h3>
+    <span class="ref">score.py:109–127</span>
+    <pre><code>expr = (
+    3 * pl.col("ov_syn_subpara")
+    + 2 * pl.col("ov_syn_para")
+    + pl.col("ov_syn_item")
+    + pl.col("ov_hyper_item")
+    + pl.col("ov_hypo_item")
+    + pl.col("ov_sim_subpara")
+    + 0.5 * pl.col("pos_ok")
+)</code></pre>
+    <p>Seven weights chosen by hand; it is kept as a column so <code>evaluate.py</code> can
+      compare. For the two top rows of <span class="ja">乗る</span>:</p>
+    <pre class="data">072074 乗り降り: 3*0 + 2*3 + 3 + 1 + 0 + 0 + 0.5 = 10.5   (gold)
+067149 因果:     3*2 + 2*2 + 2 + 0 + 1 + 0 + 0.5 = 13.5   (baseline's pick)</pre>
+
+    <h3>5 · The model</h3>
+    <span class="ref">score.py:130–154</span>
+    <pre><code>if kind == "gbt":
+    return make_pipeline(
+        GradientBoostingClassifier(
+            n_estimators=150, max_depth=2, learning_rate=0.05, subsample=0.8, random_state=0
+        )
+    )
+if kind == "lr":
+    return make_pipeline(
+        StandardScaler(),
+        LogisticRegression(C=0.1, class_weight="balanced", max_iter=3000),
+    )</code></pre>
+    <p>150 trees of depth 2 (each tree asks at most two questions), a small learning rate
+      and 80% row subsampling: a deliberately shallow model for 2,448 training rows. It
+      fits in about two seconds. <code>random_state=0</code> makes a refit reproduce
+      <code>p</code> to the third decimal, which is how the numbers on this page were
+      checked. The <code>lr</code> alternative scales the features first and balances the
+      587 : 1,861 class ratio; the README's results table says <code>gbt</code> is better
+      on dev.</p>
+
+    <h3 id="c-weights">6 · Which features the model uses</h3>
+    <span class="ref">score.py:157–171</span>
+    <pre><code>est = model[-1]
+weights = est.coef_[0] if hasattr(est, "coef_") else est.feature_importances_
+top = sorted(zip(features, weights, strict=True), key=lambda t: -abs(t[1]))[:n]
+return ", ".join(f"{f}={w:+.2f}" for f, w in top)</code></pre>
+    <p>For a logistic regression this reads the signed coefficients, for the trees the
+      (non-negative) importances, so the <code>+</code> sign on GBT output means nothing.
+      Refitting on the 2,448 labelled rows of <code>build/scored.parquet</code> gives the
+      line the run logged:</p>
+    <pre class="data">INFO most influential features: rel_sent_multilingual_e5_small_ctx=+0.35, rel_chive_para_max=+0.16,
+  rel_sent_multilingual_e5_small_cat=+0.07, rel_sent_multilingual_e5_small_sub=+0.06,
+  rel_chive_para_mean=+0.05, fr_syn_item=+0.04, rel_chive_syn_item=+0.04, rel_chive_syn_para=+0.04,
+  rel_chive_sub_mean=+0.03, chive_para_mean=+0.02, rel_chive_sub_max=+0.02, chive_para_max=+0.02</pre>
+    <p>Nine of the twelve are <code>rel_</code> columns; the first structural feature is
+      <code>fr_syn_item</code> in sixth place. Only 57 of the 109 features are used by any
+      tree at all. With <code>--model lr</code> the top of the list is
+      <code>rel_sent_multilingual_e5_small_cat=+0.79, rel_sent_multilingual_e5_small_sub=+0.67,
+      yomi_match=+0.63, rel_chive_syn_para=+0.58, ov_syn_subpara=-0.38</code>, the last a
+      sign that raw overlap counts mislead once the fractions are present.</p>
+    <pre class="query data">lab = df.filter(pl.col("gold").is_not_null())            # 2,448 rows
+x = lab.select(feats).fill_null(0.0).to_numpy().astype(float)
+m = score.make_model("gbt").fit(x, lab["gold"].to_numpy())
+print(score.top_weights(m, feats))</pre>
+
+    <h3 id="c-fit">7 · Cross-validate, refit, predict</h3>
+    <span class="ref">score.py:174–214</span>
+    <p>The heart of the script. Four arrays are built once: the feature matrix for every
+      row (nulls to 0), a mask of labelled rows, their labels, and their sense IDs as
+      groups.</p>
+    <pre><code>x_all = df.select(features).fill_null(0.0).to_numpy().astype(float)
+labelled = df["gold"].is_not_null().to_numpy()
+if not train_single:
+    labelled &= (df["n_cands"] > 1).to_numpy()
+x = x_all[labelled]
+y = df["gold"].fill_null(-1).to_numpy()[labelled]
+sense_ids = df["sense_id"].to_numpy()
+groups = sense_ids[labelled]
+in_dev = df["gold_rel"].is_not_null().to_numpy() if "gold_rel" in df.columns else labelled</code></pre>
+    <p>Then five folds, grouped by sense: a sense's rows are either all in the training
+      part or all held out, so the model scoring <span class="ja">乗る</span> has never seen
+      any row of <span class="ja">乗る</span>. Each held-out model predicts every
+      <em>dev</em> row of its senses, including the 101 unlabelled <code>same_*</code> rows,
+      so <code>evaluate.py</code> can rank them too.</p>
+    <pre><code>p_cv = np.full(len(df), np.nan)
+for train, test in GroupKFold(n_splits=folds).split(x, y, groups):
+    model = make_model(kind).fit(x[train], y[train])
+    held = in_dev & np.isin(sense_ids, np.unique(groups[test]))
+    p_cv[held] = model.predict_proba(x_all[held])[:, 1]
+model = make_model(kind).fit(x, y)
+p = model.predict_proba(x_all)[:, 1]</code></pre>
+    <p>On this build each fold trains on 1,958 or 1,959 rows and holds out 118 to 120
+      senses (489 or 490 labelled rows). <code>p_cv</code> is set for the 2,549 dev rows and
+      stays <code>NaN</code> for the other 165,991; the final model, fit on all 2,448
+      labelled rows, writes <code>p</code> for all 168,540. What the held-out
+      probabilities say about the dev set, at the 0.5 threshold:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>rows</th><th>count</th><th><code>p_cv ≥ 0.5</code></th><th>reading</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip k-pos">exact</span></td><td class="num">587</td><td class="num">497 (85%)</td><td>recall of the gold record</td></tr>
+        <tr><td><span class="chip k-neg">other</span></td><td class="num">673</td><td class="num">72 (11%)</td><td>wrong records of the same word accepted</td></tr>
+        <tr><td><span class="chip k-decoy">decoy</span></td><td class="num">1,188</td><td class="num">1</td><td>records of unrelated words accepted</td></tr>
+        <tr><td><span class="chip k-unl">same_*</span></td><td class="num">101</td><td class="num">81</td><td>neighbours of the gold; not counted either way in training</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The <code>train_single</code> switch (<code>--ambiguous-only</code> on the command
+      line) drops the 290 single-candidate dev senses from training. Before decoys existed
+      that was the default, because a lone gold with no negative only teaches "one
+      candidate means link"; now the decoys supply the negatives and all 596 senses train.</p>
+
+    <h3>8 · The evidence string</h3>
+    <span class="ref">score.py:217–233</span>
+    <pre><code>ov = [c for c in df.columns if c.startswith("ov_")]
+parts = [pl.col("lex")] + [
+    pl.when(pl.col(c) > 0).then(pl.lit(c[3:] + "=") + pl.col(c).cast(pl.Utf8)).otherwise(None)
+    for c in ov
+]
+return df.select(pl.concat_str(parts, separator=";", ignore_nulls=True).alias("evidence"))</code></pre>
+    <p>The match type, then every non-zero overlap as <code>name=count</code> with the
+      <code>ov_</code> prefix cut off, joined by semicolons; <code>ignore_nulls</code> drops
+      the zero ones. It is a summary for a human reading the TSV, not a feature, and it
+      says nothing about the embedding columns that actually decided most links. The gold
+      row of <span class="ja">乗る</span>, and the strongest link in the whole table:</p>
+    <pre class="data">乗る → 072074   lemma;syn_para=3;syn_item=3;hyper_item=1;hyper_middle=4;hypo_middle=1;ant_item=2
+男   → 1.2040-02-01-01 (p 0.990)
+                lemma;syn_subpara=1;syn_para=4;syn_item=4;hyper_middle=4;hypo_para=2;hypo_item=2;hypo_middle=16;sib_para=3;sib_item=15;ant_item=12
+察する (decoy)   lemma</pre>
+
+    <h3>9 · Main: thresholds and the three outputs</h3>
+    <span class="ref">score.py:236–279</span>
+    <p>The defaults are <code>build/candidates.parquet</code> in, <code>wnja-wlsp.tsv</code>
+      out, with <code>--threshold 0.5</code> and <code>--review-threshold 0.2</code>. The
+      body is the pipeline above in six lines, then the writes:</p>
+    <pre><code>df = add_derived(pl.read_parquet(args.candidates))
+features = feature_columns(df, priors=args.priors)
+df = df.with_columns(baseline_score(df))
+df = fit_and_predict(df, features, args.model, train_single=not args.ambiguous_only)
+df = df.with_columns(evidence(df), pl.col("p").round(3), pl.col("p_cv").round(3))
+df.write_parquet(args.scored)
+
+out_cols = [*ID_COLUMNS, "n_cands", "p", "evidence"]
+mapping = df.filter(pl.col("p") >= args.threshold).sort(
+    ["sense_id", "p"], descending=[False, True]
+)
+mapping.select(out_cols).rename({"p": "confidence"}).write_csv(args.output, separator="\t")
+review = df.filter((pl.col("p") >= args.review_threshold) & (pl.col("p") < args.threshold))</code></pre>
+    <p>The parquet keeps all 132 columns (59 in, 69 derived, <code>baseline</code>,
+      <code>p_cv</code>, <code>p</code>, <code>evidence</code>) and is what
+      <code>evaluate.py</code> and <code>judge_claude.py</code> read. The mapping TSV is
+      sorted by sense then by falling <code>p</code>, so a sense's links are adjacent with
+      the best first, and <code>p</code> is renamed <code>confidence</code>; the review file
+      keeps the name <code>p</code> and is sorted by <code>p</code> alone. The first lines
+      of <code>wnja-wlsp.tsv</code>:</p>
+    <pre class="data">sense_id	synset_id	ili	lemma	pos	midashi_no	record_id	code	labels	wlsp_lemma	pos_wlsp	n_cands	confidence	evidence
+wnja-00001740-a-0	wnja-00001740-a	i1	可能	a	03250	003443	1.1346-01-02-01	体/関係/様相/難易・安危	可能	n	2	0.914	lemma
+wnja-00001740-n-1	wnja-00001740-n	i35545	実体	n	00316	000338	1.1040-03-01-01	体/関係/事柄/本体・代理	実体	n	1	0.922	lemma;hypo_middle=2
+wnja-00001740-v-4	wnja-00001740-v	i21778	息衝く	v	85906	090369	2.5710-03-02-03	用/自然/生命/生理	息づく	v	2	0.658	form;hypo_para=1;hypo_item=2;hypo_middle=2
+wnja-00001837-r-6	wnja-00001837-r	i18158	西暦	r	33081	034635	1.3161-07-01-02	体/活動/言語/目録・暦	西暦	n	1	0.816	lemma</pre>
+    <p>Row three is a <code>form</code> match: <span class="ja">息衝く</span>
+      <span class="en">「肺に空気を吸い込みはき出す」</span> to the record spelled
+      <span class="ja">息づく</span> under <span class="ja">生理</span>; its other candidate,
+      <span class="ja">息づく</span> under <span class="ja">口・鼻・目の動作</span>, scored
+      0.288 and went to the review file. The top of <code>build/review.tsv</code> is the
+      pairs that just missed, all at 0.499:</p>
+    <pre class="data">sense_id	synset_id	ili	lemma	pos	midashi_no	record_id	code	labels	wlsp_lemma	pos_wlsp	n_cands	p	evidence
+wnja-00031798-r-1024	wnja-00031798-r	i18319	既に	r	88671	093286	3.1642-06-02-03	相/関係/時間/過去	既に	a	2	0.499	lemma
+wnja-06724066-n-1059	wnja-06724066-n	i71837	本当	n	86349	090861	3.1030-04-01-01	相/関係/真偽/真偽・是非	本当	a	2	0.499	lemma;syn_para=3;syn_item=3
+wnja-00059413-r-1156	wnja-00059413-r	i18495	ウント	r	89190	093848	3.1910-03-07-01	相/関係/量/多少	うんと	a	2	0.499	lemma;syn_subpara=1;syn_para=5;syn_item=5</pre>
+    <p>The closing log line, reconstructed from the parquet with the script's own format
+      string (the log itself was not kept):</p>
+    <pre class="data">INFO 168540 rows, 109 features
+INFO wrote wnja-wlsp.tsv (92836 links for 88348 senses) and build/review.tsv (20087 borderline pairs)</pre>
+    <p>88,348 of the 96,223 senses get at least one link; 7,875 get none, and 20,087 pairs
+      (3 of them lone candidates) wait in the review file for the judge tier.</p>
+    <pre class="query data">df.filter(pl.col("p") >= 0.5).height, df.filter(pl.col("p") >= 0.5)["sense_id"].n_unique()   # 92836, 88348
+df.filter((pl.col("p") >= 0.2) & (pl.col("p") < 0.5)).height                                   # 20087
+df.filter(pl.col("sense_id") == "wnja-02018049-v-10632").sort("p", descending=True)            # the 乗る table</pre>
+  </section>
+
+  <section id="quiz" class="quiz">
+    <h2>Quiz</h2>
+    <p>Six questions on the substance. Pick one per question; the reason appears either
+      way.</p>
+    <div id="quizRoot"></div>
+  </section>
+
+  <section id="trust">
+    <h2>How much to trust this</h2>
+    <p>This page was written by an AI from the source file and the built data. That makes
+      it quick to produce and easy to refine, and fallible: a model can misread a line,
+      invent a plausible detail, or keep a number that has since changed.</p>
+    <p>Treat the code as the source of truth and this page as a guide to it:</p>
+    <ul>
+      <li>Every code claim carries a <code>score.py:line</code> reference for commit
+        <code>b3e6896</code>; open the file and check. The checker
+        <code>explainer_check.py</code> confirmed that every identifier quoted in a code
+        block exists in the source and every line range is inside the file.</li>
+      <li>The counts (168,540 rows, 109 features, 92,836 links, 59,843 lone links, the
+        fold sizes, the importances) were read from <code>build/scored.parquet</code> and
+        <code>wnja-wlsp.tsv</code> as they stood on 2026-11-05, with the chiVe and
+        multilingual-e5-small columns present. Add a <code>sent_*</code> or
+        <code>judge_*</code> column, or rebuild the candidates, and all of them change;
+        the README's results table already lists runs with other feature sets.</li>
+      <li>The importances were obtained by refitting <code>make_model("gbt")</code> on the
+        2,448 labelled rows, not from a saved log; the refit reproduces the stored
+        <code>p</code> of <span class="ja">乗る</span> exactly, which is the evidence that it
+        is the same model.</li>
+      <li>The lone-candidate figures count real candidates only; the 578 decoys attached
+        to single-candidate dev senses also have <code>n_cands=1</code> and almost all
+        score below 0.5, so a naive filter on <code>n_cands</code> sees 60,426 rows.</li>
+      <li>The surest check is to run <code>uv run scripts/score.py</code> and compare its
+        log and the head of <code>wnja-wlsp.tsv</code> with this page; the query snippets
+        reproduce every table.</li>
+      <li>The quiz answers are derived from the code; where one disagrees with the code,
+        the code wins. Please report it.</li>
+    </ul>
+    <p>Guard the process, not just the page: generate the explainer only from the real
+      file, pin numbers to an actual build, and have a second reader, a person or another
+      model, check it against the source before it is shared.</p>
+  </section>
+
+  <section id="glossary">
+    <h2>Glossary</h2>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Term</th><th>What it means here</th></tr></thead>
+      <tbody>
+        <tr><td><strong>wnja sense</strong></td><td>one word in one synset of the Japanese WordNet, <code>wnja-02018049-v-10632</code> = <span class="ja">乗る</span> in the boarding synset. The unit being linked.</td></tr>
+        <tr><td><strong>WLSP record</strong></td><td>one line of <span class="ja">分類語彙表</span>: a headword under one code, e.g. 072074 <span class="ja">乗る</span> at <code>2.1541-02-01-01</code>.</td></tr>
+        <tr><td><strong><span class="ja">分類項目</span> / <span class="ja">段落</span> / <span class="ja">小段落</span></strong></td><td>item, paragraph, sub-paragraph: the three nested groups the code encodes (<code>1541</code>, <code>02</code>, <code>01</code>); the <span class="ja">中項目</span> is the level above the item (<span class="ja">作用</span>). Overlap features count synset neighbours found at each level.</td></tr>
+        <tr><td><strong>candidate pair</strong></td><td>one row of the table: a wnja sense and a WLSP record with a matching string. 168,540 of them.</td></tr>
+        <tr><td><strong>gold / gold_rel</strong></td><td>training label (1, 0 or null) and its reason (<code>exact</code>, <code>other</code>, <code>decoy</code>, <code>same_*</code>), both set by <code>candidates.py</code>.</td></tr>
+        <tr><td><strong>decoy</strong></td><td>a record of a different word in the same <span class="ja">類</span>, attached to a dev sense as a guaranteed negative (<span class="ja">察する</span> for <span class="ja">乗る</span>).</td></tr>
+        <tr><td><strong>p / p_cv / confidence</strong></td><td>probability of a link from the final model (every row); the same from a model that did not see the sense (dev rows only); <code>p</code> renamed in the output TSV.</td></tr>
+        <tr><td><strong>GroupKFold</strong></td><td>cross-validation where rows sharing a group (here a sense) are never split between training and test.</td></tr>
+        <tr><td><strong>rel_* feature</strong></td><td>a similarity minus the best similarity of the same sense: 0 for the sense's top candidate, negative for the rest.</td></tr>
+        <tr><td><strong>prior</strong></td><td>a feature about the word rather than the pair (<code>n_cands</code>, <code>n_senses</code>, <code>sense_rank</code>); excluded by default.</td></tr>
+        <tr><td><strong>lone candidate</strong></td><td>a sense with <code>n_cands=1</code>; 59,848 of them, almost all linked, none verified by the dev set.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>Explainer for <code>wnja-bunrigoihyou</code> · generated from
+      <code>scripts/score.py</code>. Format after Geoffrey Litt's <em>explain-diff</em>:
+      background, intuition, code, quiz.</p>
+    <p class="prov">Explainer v0, 2026-11-05, Claude Fable 5.1 · source
+      <code>scripts/score.py</code> at commit <code>b3e6896</code> (2026-11-05) · data
+      <code>build/scored.parquet</code>, <code>wnja-wlsp.tsv</code>, <code>build/review.tsv</code>
+      and <code>dev/devset.tsv</code> as built 2026-11-05 (wnja 2.1, WLSP ver 1.0.1,
+      chiVe 1.3 mc30, multilingual-e5-small) · regenerate when the code or the feature
+      columns change.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const QUESTIONS = [
+    {
+      q: "Why does add_derived subtract the best value of the same sense from each embedding cosine?",
+      options: [
+        {t:"Cosines of all candidates sit in a narrow band, so only the within-sense difference separates them", ok:true},
+        {t:"To normalise the cosines to the 0 to 1 range the tree model requires", ok:false},
+        {t:"Because the best candidate of each sense is always the gold record", ok:false},
+        {t:"To remove the chiVe rows that have no vector", ok:false},
+      ],
+      why:"e5 cosines run roughly 0.81 to 0.89 for everything, gold or decoy. rel_x = x - max(x) over sense_id makes the sense's top candidate 0 and the rest negative, which a depth-2 tree can split; the raw e5 cat column has importance 0.002 and its rel_ twin 0.072. Trees do not need 0 to 1 inputs, and null cosines are handled by fill_null(0.0)."
+    },
+    {
+      q: "A sense has three candidates and two of them score 0.7 and 0.6. What goes into wnja-wlsp.tsv?",
+      options: [
+        {t:"Both pairs, as two rows for the same sense_id, the 0.7 row first", ok:true},
+        {t:"Only the 0.7 pair; each sense gets at most one link", ok:false},
+        {t:"Neither, because the two scores are within 0.15 of each other", ok:false},
+        {t:"Both, but the 0.6 one is renamed to the review file", ok:false},
+      ],
+      why:"The mapping is every row with p >= threshold (0.5), sorted by sense_id and then by falling p (score.py:266–269). Nothing limits a sense to one link; 4,266 senses have more than one. The 0.15 gap is a judge_claude.py selection rule, not a filter here."
+    },
+    {
+      q: "Why are n_cands and n_senses left out of the features by default?",
+      options: [
+        {t:"They describe the word, not the pair, so they push every link of an ambiguous word down and every lone pair up", ok:true},
+        {t:"They are strings and feature_columns keeps only numeric columns", ok:false},
+        {t:"They are needed as identifier columns in the output TSV", ok:false},
+        {t:"GroupKFold needs them as the group labels", ok:false},
+      ],
+      why:"PRIORS (score.py:54) is excluded unless --priors is set. The comment says it: they help top-1 accuracy but penalise genuine many-to-many links. They are integers, n_cands is written to the TSV anyway from ID_COLUMNS plus out_cols, and the groups are sense_id."
+    },
+    {
+      q: "What does GroupKFold with groups = sense_id guarantee about p_cv?",
+      options: [
+        {t:"A row's p_cv comes from a model that saw no row of that sense during training", ok:true},
+        {t:"Each fold has exactly the same number of senses", ok:false},
+        {t:"Every row of the table receives a p_cv value", ok:false},
+        {t:"Positive and negative rows are balanced within each fold", ok:false},
+      ],
+      why:"Grouping keeps all rows of a sense on one side of the split, so the held-out prediction is honest. Folds are only roughly equal (118 to 120 senses here), p_cv is written only for the 2,549 dev rows and stays NaN elsewhere, and nothing balances classes."
+    },
+    {
+      q: "The dev set has no sense whose only candidate is wrong. What follows for the output?",
+      options: [
+        {t:"Lone candidates are almost all linked (59,843 of 59,848) but the model has never been tested on rejecting one", ok:true},
+        {t:"Lone candidates are dropped from the TSV until the judge has checked them", ok:false},
+        {t:"The decoys fully cover the case, so lone links are as reliable as the rest", ok:false},
+        {t:"The script sets p = 1.0 for every lone candidate by construction", ok:false},
+      ],
+      why:"The scorer rates each pair on its features and gives most lone candidates a high p (median 0.934); five real ones fall below 0.5. Decoys show it can reject an unrelated word, but a lone record that is the same word in another sense is harder and unmeasured. The TSV keeps n_cands so these can be filtered or sampled for the judge."
+    },
+    {
+      q: "The evidence string of a link reads 'lemma'. What can you conclude?",
+      options: [
+        {t:"The strings matched on the lemma and no synset neighbour was found in any WLSP group; the probability came from other features", ok:true},
+        {t:"The link is unreliable and was written to the review file", ok:false},
+        {t:"The pair is a lone candidate", ok:false},
+        {t:"The embedding features were all null for this row", ok:false},
+      ],
+      why:"evidence() joins lex with every non-zero ov_* count (score.py:217–233). A bare 'lemma' means every ov_ count is 0; it says nothing about n_cands, the embedding columns or p. Row one of wnja-wlsp.tsv, 可能 at 0.914, has exactly this evidence."
+    },
+  ];
+
+  function shuffle(a){
+    for(let i=a.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  const root = document.getElementById('quizRoot');
+  QUESTIONS.forEach((item, qi)=>{
+    const q = document.createElement('div'); q.className='q';
+    const h = document.createElement('p'); h.className='qhead';
+    const tag = document.createElement('span'); tag.textContent='Q'+(qi+1);
+    h.appendChild(tag); h.appendChild(document.createTextNode(item.q));
+    q.appendChild(h);
+    const ul = document.createElement('ul');
+    shuffle(item.options.slice()).forEach(opt=>{
+      const li=document.createElement('li');
+      const b=document.createElement('button');
+      b.className='opt'; b.type='button'; b.textContent=opt.t;
+      b.addEventListener('click',()=>{
+        if(q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        b.classList.add(opt.ok?'correct':'wrong');
+        ul.querySelectorAll('button').forEach(x=>{
+          x.disabled=true;
+          if(x!==b && x.dataset.ok==='1') x.classList.add('correct');
+        });
+      });
+      b.dataset.ok = opt.ok?'1':'0';
+      li.appendChild(b); ul.appendChild(li);
+    });
+    q.appendChild(ul);
+    const why=document.createElement('p'); why.className='why'; why.textContent=item.why;
+    q.appendChild(why);
+    root.appendChild(q);
+  });
+})();
+</script>

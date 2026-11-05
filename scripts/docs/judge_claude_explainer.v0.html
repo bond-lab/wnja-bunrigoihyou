@@ -1,0 +1,723 @@
+<title>Claude as Judge</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one reading column (46rem), code and tables may scroll inside their own boxes. */
+  :root{
+    --ground:#f7f5f1; --surface:#fffdf9; --ink:#1f2328; --muted:#5f6670;
+    --accent:#2d5aa6; --accent-soft:#e4ebf7; --hair:#e4e0d8;
+    --wn:#8a4f1d; --wlsp:#2f6f4f; --warn:#a8641c; --bad:#a63d3d; --code-bg:#f1eee8;
+    --serif:"Palatino Linotype",Palatino,"Book Antiqua","Hiragino Mincho ProN","Yu Mincho","Noto Serif CJK JP",Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Sans","Yu Gothic","Noto Sans CJK JP",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono","Noto Sans Mono CJK JP",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#14171b; --surface:#1b2026; --ink:#e6e4df; --muted:#9aa2ab;
+      --accent:#7fa6e6; --accent-soft:#1e2c42; --hair:#2b3138;
+      --wn:#d9a06a; --wlsp:#7cc49a; --warn:#d8a35a; --bad:#e08080; --code-bg:#11151a;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#14171b; --surface:#1b2026; --ink:#e6e4df; --muted:#9aa2ab;
+    --accent:#7fa6e6; --accent-soft:#1e2c42; --hair:#2b3138;
+    --wn:#d9a06a; --wlsp:#7cc49a; --warn:#d8a35a; --bad:#e08080; --code-bg:#11151a;
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--serif);
+    line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .wrap{max-width:46rem;margin:0 auto;padding-block:3rem 5rem;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+  .eyebrow{font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
+  h1{font-size:2.1rem;line-height:1.15;margin:0 0 .4rem;text-wrap:balance;font-weight:600}
+  .lede{font-size:1.12rem;color:var(--muted);margin:0 0 1.4rem;text-wrap:balance}
+  .meta{font-family:var(--mono);font-size:.78rem;color:var(--muted);border-top:1px solid var(--hair);
+    border-bottom:1px solid var(--hair);padding:.6rem 0;display:flex;gap:1.2rem;flex-wrap:wrap}
+
+  nav.toc{margin:2rem 0 2.5rem;font-family:var(--sans);font-size:.9rem}
+  nav.toc ol{list-style:none;counter-reset:s;padding:0;margin:0;display:grid;gap:.3rem}
+  nav.toc li{counter-increment:s}
+  nav.toc a{color:var(--ink);text-decoration:none;display:flex;gap:.6rem;padding:.3rem .5rem;border-radius:6px}
+  nav.toc a::before{content:counter(s,decimal-leading-zero);color:var(--accent);
+    font-variant-numeric:tabular-nums;font-weight:600}
+  nav.toc a:hover{background:var(--accent-soft)}
+
+  section{margin:3rem 0}
+  h2{font-size:1.5rem;margin:0 0 .8rem;font-weight:600;padding-bottom:.3rem;border-bottom:2px solid var(--accent-soft)}
+  h3{font-size:1.06rem;font-family:var(--sans);font-weight:600;margin:1.6rem 0 .4rem}
+  p{margin:.8rem 0}
+  a{color:var(--accent)}
+  strong{font-weight:600}
+  .ja{font-family:var(--sans)}
+  .en{color:var(--muted)}
+
+  code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:.1em .35em;border-radius:4px}
+  pre{font-family:var(--mono);font-size:.8rem;line-height:1.5;background:var(--code-bg);
+    border:1px solid var(--hair);border-radius:10px;padding:1rem 1.1rem;overflow-x:auto;
+    white-space:pre;margin:1rem 0;min-width:0}
+  pre code{background:none;padding:0;font-size:1em}
+  pre.data{background:var(--surface)}
+  .ref{font-family:var(--mono);font-size:.76rem;color:var(--muted);display:block;margin:-.4rem 0 .9rem}
+
+  .chip{font-family:var(--mono);font-size:.74rem;font-weight:600;padding:.12em .5em;border-radius:999px;
+    white-space:nowrap;border:1px solid currentColor}
+  .k-wn{color:var(--wn)} .k-wlsp{color:var(--wlsp)} .k-warn{color:var(--warn)} .k-bad{color:var(--bad)} .k-ok{color:var(--accent)}
+
+  .flow{display:flex;align-items:stretch;flex-wrap:wrap;gap:.5rem;justify-content:center;
+    margin:1.4rem 0;font-family:var(--sans);font-size:.8rem}
+  .node{background:var(--surface);border:1px solid var(--hair);border-radius:8px;padding:.5rem .7rem;
+    text-align:center;box-shadow:0 1px 0 var(--hair);min-width:0;max-width:11rem}
+  .node b{display:block;color:var(--accent);font-size:.88rem}
+  .node small{color:var(--muted);font-family:var(--mono);font-size:.7rem;display:block}
+  .node.store{border-style:dashed}
+  .arrow{color:var(--muted);font-weight:700;align-self:center}
+  .arrow small{display:block;font-size:.64rem;font-family:var(--mono);font-weight:400;color:var(--accent)}
+
+  table.toy{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.85rem;font-family:var(--sans)}
+  table.toy th,table.toy td{text-align:left;padding:.5rem .55rem;border-bottom:1px solid var(--hair);vertical-align:top}
+  table.toy th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  table.toy td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .wrap-x{overflow-x:auto;min-width:0}
+
+  .callout{background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;
+    padding:.8rem 1rem;margin:1.2rem 0}
+  .callout p{margin:.3rem 0}
+
+  .caveat{font-family:var(--sans);font-size:.86rem;line-height:1.45;color:var(--ink);
+    background:color-mix(in srgb,var(--warn) 12%,transparent);
+    border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);
+    border-radius:8px;padding:.7rem .9rem;margin:1.2rem 0}
+  .caveat b{color:var(--warn)}
+
+  .quiz .q{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:1.1rem 1.2rem;margin:1rem 0}
+  .quiz .qhead{font-weight:600;margin:0 0 .7rem;font-family:var(--sans);font-size:1rem}
+  .quiz .qhead span{color:var(--accent);font-family:var(--mono);margin-right:.5rem}
+  .quiz ul{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
+  .quiz button.opt{width:100%;text-align:left;font:inherit;font-family:var(--sans);font-size:.92rem;
+    background:var(--ground);color:var(--ink);cursor:pointer;border:1px solid var(--hair);border-radius:8px;
+    padding:.6rem .8rem;transition:border-color .15s,background .15s}
+  .quiz button.opt:hover{border-color:var(--accent)}
+  .quiz button.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .quiz button.opt.correct{border-color:var(--wlsp);background:color-mix(in srgb,var(--wlsp) 14%,transparent)}
+  .quiz button.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+  .quiz button.opt[disabled]{cursor:default}
+  .quiz .why{font-size:.88rem;color:var(--muted);margin:.7rem 0 0;padding-left:.6rem;border-left:2px solid var(--hair);display:none}
+  .quiz .q.answered .why{display:block}
+
+  footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--hair);font-family:var(--sans);font-size:.82rem;color:var(--muted)}
+  .prov{font-family:var(--mono);font-size:.74rem;line-height:1.55;margin-top:.7rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">wnja-bunrigoihyou · Tier 2b · Code explainer</p>
+    <h1>Claude as judge of the uncertain links</h1>
+    <p class="lede">How <code>judge_claude.py</code> picks the words the scorer cannot decide,
+      shows all their senses to Claude in one prompt, and turns the JSON verdicts into three
+      new columns for the scorer.</p>
+    <div class="meta">
+      <span>scripts/judge_claude.py</span><span>609 lines</span>
+      <span>deps: polars, wn, anthropic (extra "judge")</span>
+      <span>run: uv run scripts/judge_claude.py --dry-run</span>
+    </div>
+    <p class="caveat"><b>Generated by an AI.</b> This page was written from the code and can be
+      wrong: a misread line, an invented detail, a stale number. Trust the code, not this page;
+      check anything that matters against <code>scripts/judge_claude.py</code>. No request has
+      been sent to Claude yet from this project: the only run so far is a dry run
+      (2026-11-05 18:24), and the candidate table was re-scored afterwards (19:08), so the
+      selection counts on this page come from the <em>current</em> <code>build/scored.parquet</code>
+      and differ from the dry run's 24,045 prompts. Every verdict shown here is
+      illustrative, not a model answer. See <a href="#trust">How much to trust this</a>.</p>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#background">Background: two sense inventories and a scorer that hesitates</a></li>
+      <li><a href="#intuition">Intuition: one word, one prompt, one verdict</a></li>
+      <li><a href="#code">Code: selection, prompts, five modes, apply</a></li>
+      <li><a href="#quiz">Quiz</a></li>
+      <li><a href="#trust">How much to trust this</a></li>
+      <li><a href="#reproduce">Appendix: reproduce the numbers</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <p>The project links two Japanese sense inventories. The <strong>Japanese WordNet</strong>
+      (<code>wnja:2.1</code>, 67,509 synsets) groups words into synsets with a definition and
+      examples. A <em>wnja sense</em> is one word in one synset, with an id such as
+      <code>wnja-02902079-n-33654</code>: the word <span class="ja">鍔</span> in synset
+      <code>wnja-02902079-n</code>, glossed <span class="ja">王冠から外側に突き出した円形の縁</span>
+      (the brim of a hat). The <strong>分類語彙表</strong> (WLSP, ver 1.0.1, 101,067 records,
+      96,051 headword senses) is a thesaurus: a sense is a headword at a <em>position</em>, named
+      by a 見出し番号 and a code <code>類.部門中項目分類項目-段落-小段落-語番号</code>. The same
+      written form <span class="ja">つば</span> has three positions:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>見出し番号</th><th>code</th><th>labels</th><th>小段落 neighbours</th><th>meaning</th></tr></thead>
+      <tbody>
+        <tr><td class="num">48180</td><td class="num">1.4250-15-01-01</td>
+          <td class="ja">体/生産物/衣料/帽子・マスクなど</td><td>none (alone in its 小段落 and 段落)</td>
+          <td class="en">hat brim</td></tr>
+        <tr><td class="num">52664</td><td class="num">1.4550-10-01-05</td>
+          <td class="ja">体/生産物/道具/刃物</td><td class="ja">刀身、中子、さや</td>
+          <td class="en">sword guard</td></tr>
+        <tr><td class="num">63119</td><td class="num">1.5607-10-01-01</td>
+          <td class="ja">体/自然/身体/体液・分泌物</td><td class="ja">つばき、生つば、唾液</td>
+          <td class="en">saliva</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The category path and the neighbours are what define a WLSP sense; the headword alone
+      does not. That sentence is in the system prompt almost word for word
+      (<code>judge_claude.py:68–69</code>).</p>
+
+    <h3>The candidate table and its scorer</h3>
+    <p>Earlier steps of the pipeline (<code>candidates.py</code>, <code>score.py</code>) pair every
+      wnja sense with the WLSP senses whose written form matches and give each pair a probability
+      <code>p</code>. The current <code>build/scored.parquet</code> has 168,540 pairs for 96,223
+      wnja senses and 40,753 words. For <span class="ja">鍔</span> the scorer wrote:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>wnja sense</th><th>WLSP 見出し番号</th><th>code</th><th>p</th><th>evidence</th></tr></thead>
+      <tbody>
+        <tr><td class="num">wnja-02902079-n-33654</td><td class="num">48180</td><td class="num">1.4250-15-01-01</td><td class="num">0.823</td><td>lemma</td></tr>
+        <tr><td class="num">wnja-02902079-n-33654</td><td class="num">52664</td><td class="num">1.4550-10-01-05</td><td class="num">0.522</td><td>lemma</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The only evidence is that the lemma matches; nothing in the synset neighbourhood overlaps
+      either category, so the scorer leans on priors. 0.522 is a shrug. Three kinds of shrug
+      recur in the table, and the judge exists for them:</p>
+    <ul>
+      <li><strong>A pair in the band</strong> 0.3 to 0.7, like the 0.522 above. 23,059 pairs
+        (13.7%) sit there, spread over 7,861 words: <span class="ja">鍔</span>,
+        <span class="ja">可能</span> (eight of its twelve pairs), <span class="ja">呼吸</span>,
+        <span class="ja">按摩</span>.</li>
+      <li><strong>A close top two.</strong> A sense whose best and second-best candidates are
+        within 0.15 of each other, even if both are high. <span class="ja">黄色</span> has
+        several senses scored 0.912 against <em>both</em> positions <code>1.5020-10-04-02</code>
+        and <code>-03</code> (adjacent entries in the same 小段落): the scorer cannot tell them
+        apart, and probably should link both. 7,511 senses in 4,170 words are undecided this
+        way. Contrast <span class="ja">父</span>: best 0.98 (<span class="ja">親・先祖</span>),
+        second 0.006 (<span class="ja">輸入品</span>, a reading match), a gap of 0.974, so no
+        judge is needed.</li>
+      <li><strong>A lone candidate.</strong> 60,426 pairs (36%) are the only candidate of
+        their sense, in 28,638 words. Their median <code>p</code> is 0.934 and only 583 fall
+        below 0.5, not because they are right but because the dev set has no negatives of that
+        kind: every dev word was linked. <span class="ja">卸す</span> (one sense, one WLSP
+        position, 0.922) is the typical case. The scorer cannot learn to reject these, so
+        <code>--single-sample N</code> sends a random N of them to the judge to measure how
+        often they are wrong.</li>
+    </ul>
+
+    <h3>What the judge is asked for</h3>
+    <p>Not a yes or no per pair. For one headword Claude sees <em>all</em> its wnja senses
+      (labelled W1, W2, …) and <em>all</em> its WLSP senses (B1, B2, …) and returns the pairs
+      that hold, each with one of four relations and a confidence
+      (<code>judge_claude.py:51</code>, <code>:60–67</code>):</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>relation</th><th>meaning</th><th>effect in <code>--apply</code></th></tr></thead>
+      <tbody>
+        <tr><td><code>same</code></td><td>same meaning</td><td><code>judge_same</code> = 1</td></tr>
+        <tr><td><code>narrower</code></td><td>the WordNet sense is more specific than the WLSP sense</td><td rowspan="3"><code>judge_same</code> = 0, but <code>judge_rel</code> keeps the relation and <code>judge_conf</code> the confidence</td></tr>
+        <tr><td><code>broader</code></td><td>more general</td></tr>
+        <tr><td><code>related</code></td><td>clearly connected, neither covers the other</td></tr>
+        <tr><td><em>(not listed)</em></td><td>the pair does not hold</td><td><code>judge_same</code> = 0, <code>judge_rel</code> = <code>none</code>, <code>judge_conf</code> = 0.0</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The answer is forced into JSON by the API's structured-output format
+      (<code>OUTPUT_SCHEMA</code>, <code>judge_claude.py:72–93</code>): an array of
+      <code>{wordnet, wlsp, relation, confidence}</code> objects plus a <code>note</code>. The
+      script never parses free text.</p>
+
+    <h3>Where the judge sits</h3>
+    <p>The README calls this <em>tier 2b</em>. Tier 1 (chiVe word vectors) and tier 2 (sentence
+      embeddings) add feature columns; tier 2b adds <em>labels</em> from a model that can read the
+      definitions; tier 3 (岩波国語辞典 definitions, via <code>data/wlsp2iwanami</code>) would
+      enrich the judge's prompt when <code>build/iwanami_defs.tsv</code> exists. On this machine
+      it does not, so the dry-run prompts carry no <span class="ja">岩波</span> lines.</p>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <p>One word, one prompt, one verdict, cached by a hash of the prompt. Nothing is
+      re-asked unless the prompt text itself changes.</p>
+
+    <div class="wrap-x">
+      <div class="flow">
+        <div class="node store"><b>scored.parquet</b><small>168,540 pairs, p</small></div>
+        <div class="arrow">→<small>select_words</small></div>
+        <div class="node"><b>8,777 words</b><small>band ∪ margin (∪ sample)</small></div>
+        <div class="arrow">→<small>build_cases</small></div>
+        <div class="node"><b>one prompt per word</b><small>W1… × B1…, key = sha256[:16]</small></div>
+        <div class="arrow">→<small>--sync / --submit</small></div>
+        <div class="node"><b>Claude</b><small>claude-sonnet-5-5, JSON</small></div>
+        <div class="arrow">→<small>--collect</small></div>
+        <div class="node store"><b>judge.jsonl</b><small>key, lemma, links</small></div>
+        <div class="arrow">→<small>--apply</small></div>
+        <div class="node store"><b>candidates.parquet</b><small>judge_same / _rel / _conf</small></div>
+      </div>
+    </div>
+
+    <h3>The prompt for <span class="ja">鍔</span>, as written by the dry run</h3>
+    <p>This is a real line of <code>build/judge_prompts.jsonl</code> (key
+      <code>ac71bd85ecc291e4</code>), 246 characters, one of the shortest two-candidate
+      prompts. B1 has no neighbour lines because 48180 is alone in its 小段落 and 段落; B2 lists
+      its 小段落 and up to fifteen 段落 neighbours.</p>
+    <pre class="data">Headword: 鍔
+
+WordNet senses:
+W1. 鍔: 王冠から外側に突き出した円形の縁
+
+WLSP senses:
+B1. [1.4250-15-01-01] 体/生産物/衣料/帽子・マスクなど: つば
+B2. [1.4550-10-01-05] 体/生産物/道具/刃物: つば; 小段落: 刀身、中子、さや; 段落: 刀身、中子、さや、切羽、つか、つば元、切っ先
+
+Which WordNet senses correspond to which WLSP senses?</pre>
+    <p>The system prompt (<code>judge_claude.py:53–70</code>) goes with every request; it
+      explains the two inventories, the four relations, and that near-duplicate WLSP entries
+      should all be linked.</p>
+
+    <h3>What an answer looks like</h3>
+    <p><strong>Illustrative, not a model answer.</strong> A verdict that fits
+      <code>OUTPUT_SCHEMA</code> for the prompt above might be:</p>
+    <pre class="data">{"links": [{"wordnet": "W1", "wlsp": "B1", "relation": "same", "confidence": 0.9}],
+ "note": "B2 is the guard of a sword, not a brim."}</pre>
+    <p><code>parse_verdict</code> maps the labels back through <code>case.pairs</code>
+      (<code>("W1","B1") → ("wnja-02902079-n-33654", "48180")</code>) and the record appended to
+      <code>build/judge.jsonl</code> would be:</p>
+    <pre class="data">{"key": "ac71bd85ecc291e4", "lemma": "鍔", "model": "claude-sonnet-5-5",
+ "links": [{"sense_id": "wnja-02902079-n-33654", "midashi_no": "48180", "relation": "same", "confidence": 0.9}]}</pre>
+
+    <h3>What <code>--apply</code> then writes</h3>
+    <p>Running <code>apply_verdicts</code> in memory on the rows of <span class="ja">鍔</span> and
+      <span class="ja">卸す</span> with that one illustrative record gives:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>lemma</th><th>sense_id</th><th>midashi_no</th><th>p</th><th>judge_same</th><th>judge_rel</th><th>judge_conf</th></tr></thead>
+      <tbody>
+        <tr><td class="ja">卸す</td><td class="num">wnja-02247226-v-29401</td><td class="num">83028</td><td class="num">0.922</td><td class="num">null</td><td class="num">null</td><td class="num">null</td></tr>
+        <tr><td class="ja">鍔</td><td class="num">wnja-02902079-n-33654</td><td class="num">48180</td><td class="num">0.823</td><td class="num">1</td><td class="num">same</td><td class="num">0.9</td></tr>
+        <tr><td class="ja">鍔</td><td class="num">wnja-02902079-n-33654</td><td class="num">52664</td><td class="num">0.522</td><td class="num">0</td><td class="num">none</td><td class="num">0.0</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Three states, and the distinction matters for the scorer: a judged pair the judge left
+      out is a <em>negative</em> (0 / none / 0.0); a pair of a word that was never judged is
+      <em>unknown</em> (null). <span class="ja">卸す</span> was not selected by today's rule, so
+      it stays null.</p>
+
+    <h3>Which words get a prompt</h3>
+    <p>Six real words through <code>select_words</code> with the defaults
+      (<code>--low 0.3 --high 0.7 --margin 0.15</code>):</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>word</th><th>pairs</th><th>why</th><th>selected?</th></tr></thead>
+      <tbody>
+        <tr><td class="ja">鍔</td><td class="num">0.823, 0.522</td><td>0.522 is in the band (the gap 0.301 is not small)</td><td><span class="chip k-ok">band</span></td></tr>
+        <tr><td class="ja">黄色</td><td class="num">0.912 / 0.912 (several senses)</td><td>all pairs above 0.7, but top two tie</td><td><span class="chip k-ok">margin</span></td></tr>
+        <tr><td class="ja">按摩</td><td class="num">0.548 / 0.548; 0.674 / 0.509</td><td>in the band and tied</td><td><span class="chip k-ok">both</span></td></tr>
+        <tr><td class="ja">可能</td><td class="num">0.914 / 0.479 … 0.848 / 0.331</td><td>eight pairs in the band</td><td><span class="chip k-ok">band</span></td></tr>
+        <tr><td class="ja">父</td><td class="num">0.98 / 0.006 / 0.006; 0.959; …</td><td>every sense decided; nothing in the band</td><td><span class="chip k-bad">no</span></td></tr>
+        <tr><td class="ja">卸す</td><td class="num">0.922</td><td>lone candidate, high p</td><td><span class="chip k-warn">only via --single-sample</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>On the current table: 7,861 words have a pair in the band, 4,170 have a close top two,
+      3,254 have both, and the union is <strong>8,777 words</strong> holding 92,227 candidate
+      pairs. Their prompts cross every wnja sense with every WLSP sense of the word (on average
+      3.5 × 3.2), so the judge sees about 99,300 W×B pairs, a few thousand more than the scorer's
+      candidates.</p>
+
+    <div class="callout">
+      <p><strong>The dry run saw a different table.</strong> <code>build/judge_prompts.jsonl</code>
+        (18:24) holds 24,045 prompts, 13.0M characters (the script estimates ×0.7 ≈ 9.1M input
+        tokens plus the system prompt each time). <code>build/scored.parquet</code> was rewritten
+        at 19:08, after commit <code>b3e6896</code> added decoy negatives and re-scored. 12,894 of
+        the dry-run words are lone-candidate words in today's table, which the new rule skips.
+        8,545 of today's 8,777 are also in the dry run. The project's working estimate for a
+        Sonnet batch of the dry-run size was around $70; re-run <code>--dry-run</code> before
+        trusting either number.</p>
+    </div>
+  </section>
+
+  <section id="code">
+    <h2>Code</h2>
+    <p>Grouped by execution flow. <code>main</code> parses one of five mutually exclusive modes
+      (<code>judge_claude.py:514–519</code>) and everything else is a function it calls.</p>
+
+    <h3>1 · Constants: the system prompt and the schema</h3>
+    <span class="ref">judge_claude.py:51–93</span>
+    <p><code>RELATIONS</code> is the closed set of four relation names; the same tuple feeds the
+      JSON schema's <code>enum</code> and the validity check in <code>parse_verdict</code>.
+      <code>SYSTEM</code> is the lexicographer persona. <code>OUTPUT_SCHEMA</code> is a JSON
+      schema with <code>additionalProperties: False</code> at both levels and both
+      <code>links</code> and <code>note</code> required, so the model cannot add or omit
+      fields.</p>
+    <pre><code>RELATIONS = ("same", "narrower", "broader", "related")
+...
+"relation": {"type": "string", "enum": list(RELATIONS)},
+"confidence": {"type": "number", "minimum": 0, "maximum": 1},</code></pre>
+
+    <h3>2 · <code>WordCase</code>: one word, rendered and hashed</h3>
+    <span class="ref">judge_claude.py:96–120</span>
+    <p>A dataclass holding the lemma, the labelled senses and WLSP entries, and after
+      <code>finish()</code> the prompt text, a 16-hex-digit key, and the label map
+      <code>pairs</code> from <code>(W_i, B_j)</code> to <code>(sense_id, midashi_no)</code>.</p>
+    <pre><code>self.prompt = "\n".join(lines)
+self.key = hashlib.sha256((SYSTEM + self.prompt).encode("utf-8")).hexdigest()[:16]
+self.pairs = {
+    (s["label"], w["label"]): (s["sense_id"], w["midashi_no"])
+    for s in self.senses
+    for w in self.wlsp
+}</code></pre>
+    <p>The key hashes <strong>the system prompt and the user prompt together</strong>, so
+      editing <code>SYSTEM</code>, adding Iwanami definitions, or a changed synset gloss all
+      produce a new key and a fresh request; the model name is <em>not</em> in the key, so a
+      verdict from one model is reused when you switch <code>--model</code>. For
+      <span class="ja">鍔</span> the recomputed key matches the file:
+      <code>ac71bd85ecc291e4</code>.</p>
+
+    <h3>3 · <code>select_words</code>: band, margin, sample</h3>
+    <span class="ref">judge_claude.py:153–198</span>
+    <pre><code>band = df.filter((pl.col("p") >= low) & (pl.col("p") <= high))["lemma"]
+ranked = (
+    df.sort(["sense_id", "p"], descending=[False, True])
+    .with_columns(pl.int_range(pl.len()).over("sense_id").alias("rank"))
+    .filter(pl.col("rank") < 2)
+    .group_by("sense_id")
+    .agg(pl.col("p").max() - pl.col("p").min(), pl.len().alias("n"), pl.col("lemma").first())
+    .filter((pl.col("n") == 2) & (pl.col("p") < margin))["lemma"]
+)
+chosen = set(band.to_list()) | set(ranked.to_list())</code></pre>
+    <p>Line 179 is the band: any pair of the word with <code>low ≤ p ≤ high</code>, inclusive.
+      Lines 180–187 rank each sense's candidates by <code>p</code>, keep the top two, and keep
+      senses that <em>have</em> two (<code>n == 2</code>, so lone candidates never qualify here)
+      whose gap is under <code>margin</code>. The aggregated <code>max − min</code> keeps the
+      column name <code>p</code>, which is why the last filter reads
+      <code>pl.col("p") &lt; margin</code>. Lines 189–197 add the random lone-candidate sample:
+      words whose largest <code>n_cands</code> is 1 (every sense has exactly one candidate),
+      sampled with <code>random.Random(seed)</code> so the same N gives the same words. The
+      result is sorted, so <code>--max-words 20</code> takes the first twenty lemmas in code-point
+      order, not a random twenty.</p>
+
+    <h3>4 · <code>build_cases</code>: sense texts and WLSP texts</h3>
+    <span class="ref">judge_claude.py:201–258</span>
+    <p>From the candidate rows of the chosen words it collects, per lemma, the set of
+      <code>sense_id → synset_id</code> and the set of 見出し番号. Senses are labelled in sorted
+      <code>sense_id</code> order, WLSP entries in order of their code. Each wnja sense becomes
+      members, definition, up to two examples and an optional English gloss
+      (<code>:236–243</code>); each WLSP sense becomes code, labels, headword, neighbours and
+      optional 岩波 definitions (<code>:244–255</code>).</p>
+    <pre><code>text = f"{'、'.join(w.lemma() for w in ss.words())}: {' '.join(ss.definitions())}"
+if ss.examples():
+    text += f" 例: {' / '.join(ss.examples()[:2])}"
+...
+text = f"[{rec.code}] {rec.labels}: {rec.lemma}"
+sub_n = "、".join(db.neighbours(rec, "subpara"))
+para_n = "、".join(db.neighbours(rec, "para", 15))</code></pre>
+    <p><code>db.neighbours</code> (<code>wlsp.py</code>) lists the other headwords in the same
+      group, excluding the record itself, so 52664 shows <span class="ja">刀身、中子、さや</span>
+      and 48180 shows nothing. The English gloss is only added with <code>--en-gloss</code>,
+      which looks the synset up in <code>omw-en:1.4</code> by ILI (<code>main</code>,
+      <code>:558–563</code>); the dry run did not use it.</p>
+
+    <h3>5 · <code>read_iwanami</code>: tier 3 definitions, if present</h3>
+    <span class="ref">judge_claude.py:123–150</span>
+    <p>Reads <code>build/iwanami_defs.tsv</code> (sense id, definition) and NINJAL's
+      <code>WLSP2iwanami.txt</code> (Shift_JIS; column 3 is a quoted CSV string whose first field
+      is the WLSP record id), and returns definitions per record id. If either file is missing it
+      returns <code>{}</code> and the prompts simply lack the <span class="ja">岩波</span>
+      lines, which is the state on this machine.</p>
+
+    <h3>6 · <code>request_params</code>: the request body</h3>
+    <span class="ref">judge_claude.py:261–282</span>
+    <pre><code>return {
+    "model": model,
+    "max_tokens": max_tokens,
+    "system": SYSTEM,
+    "messages": [{"role": "user", "content": case.prompt}],
+    "output_config": {
+        "effort": effort,
+        "format": {"type": "json_schema", "schema": OUTPUT_SCHEMA},
+    },
+}</code></pre>
+    <p>Defaults from <code>main</code> (<code>:520–522</code>): <code>claude-sonnet-5-5</code>,
+      effort <code>medium</code>, 2,000 output tokens. The same dict is used by the sync and the
+      batch path, so the two modes ask exactly the same question.</p>
+
+    <h3>7 · <code>parse_verdict</code>: labels back to ids</h3>
+    <span class="ref">judge_claude.py:285–309</span>
+    <pre><code>for link in data.get("links", []):
+    ids = case.pairs.get((link.get("wordnet", ""), link.get("wlsp", "")))
+    if ids is None or link.get("relation") not in RELATIONS:
+        continue</code></pre>
+    <p>A link naming a label that does not exist for this word (<code>W9</code> for
+      <span class="ja">鍔</span>) or a relation outside the four is dropped silently; the test
+      <code>tests/test_judge_claude.py</code> covers exactly that. Confidence is coerced with
+      <code>float()</code> and defaults to 0.0.</p>
+
+    <h3>8 · The cache: <code>load_cache</code>, <code>append_cache</code></h3>
+    <span class="ref">judge_claude.py:312–340</span>
+    <p><code>build/judge.jsonl</code> is append-only, one JSON object per line with at least
+      <code>key</code>, <code>lemma</code>, <code>links</code>. Loading builds a dict by key, so a
+      later line with the same key wins. <code>main</code> computes
+      <code>todo = [c for c in cases if c.key not in cache]</code> (<code>:569</code>) before any
+      mode runs, which is what makes re-runs cheap.</p>
+
+    <h3>9 · The five modes</h3>
+    <span class="ref">judge_claude.py:348–466, 546–605</span>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>mode</th><th>function</th><th>network</th><th>writes</th></tr></thead>
+      <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>main</code> <code>:580–601</code></td><td>none</td><td><code>build/judge_prompts.jsonl</code>; logs the size estimate; prints the first prompt</td></tr>
+        <tr><td><code>--sync</code></td><td><code>run_sync</code> <code>:348–379</code></td><td>one request per word</td><td>appends to <code>judge.jsonl</code> after each answer</td></tr>
+        <tr><td><code>--submit</code></td><td><code>run_submit</code> <code>:382–421</code></td><td>Message Batches, 5,000 cases per batch</td><td><code>build/judge_batches.json</code>: batch id, model, and each case's lemma and <code>pairs</code></td></tr>
+        <tr><td><code>--collect</code></td><td><code>run_collect</code> <code>:424–466</code></td><td>polls each batch</td><td>appends finished verdicts to <code>judge.jsonl</code>, marks the batch collected</td></tr>
+        <tr><td><code>--apply</code></td><td><code>apply_verdicts</code> <code>:469–506</code></td><td>none</td><td>rewrites <code>build/candidates.parquet</code> with the three columns</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Two details of the sync path. The request goes through the beta client with the
+      server-side fallback (<code>:362–364</code>): if the safety classifiers decline, the API
+      re-runs the request on a fallback model inside the same call. A refusal that survives that
+      is skipped with a warning (<code>:371–373</code>), and a rate limit is retried once after
+      sixty seconds (<code>:365–370</code>).</p>
+    <pre><code>message = client.beta.messages.create(
+    betas=["server-side-fallback-2026-07-01"], fallbacks="default", **params
+)</code></pre>
+    <p>The batch path uses the plain client and no fallback (the Batches API does not take it).
+      Because batch results arrive later and in any order, <code>run_submit</code> stores each
+      case's label map in <code>judge_batches.json</code>, keyed by the prompt hash as
+      <code>custom_id</code>. <code>run_collect</code> rebuilds a bare <code>WordCase</code> from
+      that map (<code>:452–453</code>), so it needs neither the wordnet nor the WLSP database;
+      <code>main</code> returns before loading them (<code>:546–548</code>).</p>
+
+    <h3>10 · <code>apply_verdicts</code>: three columns</h3>
+    <span class="ref">judge_claude.py:469–506</span>
+    <pre><code>r, c = verdict.get((sense_id, mid), ("none", 0.0))
+same.append(int(r == "same")), rel.append(r), conf.append(c if r != "none" else 0.0)
+...
+df = df.drop([c for c in df.columns if c.startswith("judge_")])
+return df.with_columns(
+    pl.Series("judge_same", same, dtype=pl.Int8),
+    pl.Series("judge_rel", rel, dtype=pl.Utf8),
+    pl.Series("judge_conf", conf, dtype=pl.Float32),
+)</code></pre>
+    <p>It walks the candidate table once: a word whose case key is in the cache is
+      <em>judged</em>; each of its pairs gets the stored relation or <code>none</code>; everything
+      else stays null. Existing <code>judge_*</code> columns are dropped first so the step is
+      idempotent. A link the judge returns for a W×B pair that was never a candidate row (the
+      prompt crosses all senses with all WLSP senses) is kept in the cache but has no row to land
+      on. Note that <code>--apply</code> reads <code>build/candidates.parquet</code>
+      (<code>:573–575</code>), not the scored table it selected from, so the columns go back
+      upstream of <code>score.py</code>.</p>
+  </section>
+
+  <section id="quiz" class="quiz">
+    <h2>Quiz</h2>
+    <p>Six questions on the substance. Pick one per question; the reason appears either way.</p>
+    <div id="quizRoot"></div>
+  </section>
+
+  <section id="trust">
+    <h2>How much to trust this</h2>
+    <p>This page was written by an AI from the source file. That makes it fast to produce and
+      easy to refine, and fallible. A model can misread a line, invent a plausible detail, or keep
+      a number that has since changed.</p>
+    <ul>
+      <li>Every code claim carries a <code>judge_claude.py:line</code> reference against the file
+        at commit <code>b3e6896</code>; open it and check.</li>
+      <li>No API call has been made from this project. The prompt for <span class="ja">鍔</span>
+        is real (from the dry run); the verdict, the cache record and the three
+        <code>judge_*</code> values derived from it are <strong>illustrative</strong>, produced by
+        running <code>apply_verdicts</code> in memory on a hand-written record.</li>
+      <li>The selection counts (7,861 / 4,170 / 8,777 words; 60,426 lone pairs) were computed
+        from <code>build/scored.parquet</code> as of 2026-11-05 19:08 with the same polars
+        expressions as the script (see the appendix). The dry-run file is older (18:24) and
+        selected 24,045 words under the previous scoring. Both will change when the scorer is
+        re-run.</li>
+      <li>The $70 figure is the project's rough estimate for a Sonnet batch of the dry-run size,
+        not a computed price.</li>
+      <li>Every Japanese example (<span class="ja">鍔、卸す、黄色、按摩、可能、父</span>) is a real
+        row of the current table, looked up in <code>wnja:2.1</code> and WLSP ver 1.0.1.</li>
+      <li>The quiz answers follow from the code; where one disagrees with the code, the code
+        wins.</li>
+    </ul>
+    <p>The surest check is to run <code>uv run scripts/judge_claude.py --dry-run</code> and
+      compare its log line and first prompt with this page.</p>
+  </section>
+
+  <section id="reproduce">
+    <h2>Appendix: reproduce the numbers</h2>
+    <p>Run from the repository root with the project's virtual environment. It reads the scored
+      table and reuses the script's own selection function.</p>
+    <pre><code>import sys
+sys.path.insert(0, "scripts")
+import polars as pl
+from judge_claude import select_words
+
+df = pl.read_parquet("build/scored.parquet")
+band = df.filter((pl.col("p") >= 0.3) & (pl.col("p") <= 0.7))
+print(len(band), len(set(band["lemma"].to_list())))          # 23059 7861
+print(len(select_words(df, 0.3, 0.7, 0.15)))                 # 8777
+lone = df.filter(pl.col("n_cands") == 1)
+print(len(lone), len(set(lone["lemma"].to_list())))          # 60426 28638
+print(df.filter(pl.col("lemma") == "鍔").select("sense_id", "midashi_no", "code", "p"))</code></pre>
+    <p>To see a prompt and confirm its key:</p>
+    <pre><code>import hashlib, json
+from judge_claude import SYSTEM
+for line in open("build/judge_prompts.jsonl", encoding="utf-8"):
+    rec = json.loads(line)
+    if rec["lemma"] == "鍔":
+        print(rec["prompt"])
+        print(hashlib.sha256((SYSTEM + rec["prompt"]).encode("utf-8")).hexdigest()[:16], rec["key"])</code></pre>
+  </section>
+
+  <section id="glossary">
+    <h2>Glossary</h2>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Term</th><th>What it means here</th></tr></thead>
+      <tbody>
+        <tr><td><strong>wnja sense</strong></td><td>one word in one synset of the Japanese WordNet, id <code>wnja-02902079-n-33654</code>; the W labels in a prompt.</td></tr>
+        <tr><td><strong>見出し番号</strong></td><td>WLSP headword-sense number (<code>48180</code>); the unit the script links to, stored as <code>midashi_no</code>. The B labels.</td></tr>
+        <tr><td><strong>分類番号 / code</strong></td><td>WLSP position <code>1.4550-10-01-05</code>: 類.部門中項目分類項目, then 段落, 小段落, 語番号.</td></tr>
+        <tr><td><strong>小段落 / 段落</strong></td><td>the smallest and next groupings of WLSP entries; 小段落 neighbours are close synonyms (<span class="ja">刀身、中子、さや</span> for the sword guard), 段落 neighbours related senses.</td></tr>
+        <tr><td><strong>p</strong></td><td>the scorer's probability that a candidate pair is a link; the band and margin rules read it.</td></tr>
+        <tr><td><strong>lone candidate</strong></td><td>a pair whose sense has <code>n_cands == 1</code>; unverifiable by the scorer, sampled by <code>--single-sample</code>.</td></tr>
+        <tr><td><strong>key</strong></td><td>first 16 hex digits of SHA-256 of system prompt + user prompt; cache key and batch <code>custom_id</code>.</td></tr>
+        <tr><td><strong>Message Batches</strong></td><td>the API's asynchronous bulk endpoint at half price; <code>--submit</code> sends, <code>--collect</code> fetches.</td></tr>
+        <tr><td><strong>structured output</strong></td><td><code>output_config.format</code> with a JSON schema; the reply is guaranteed to parse as the schema.</td></tr>
+        <tr><td><strong>judge_same / judge_rel / judge_conf</strong></td><td>the three columns <code>--apply</code> adds: 1 if the relation is <code>same</code>; the relation name or <code>none</code>; the confidence or 0.0.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>Explainer for the wnja-bunrigoihyou mapping project, generated from
+      <code>scripts/judge_claude.py</code>. Format after Geoffrey Litt's <em>explain-diff</em>:
+      background, intuition, code, quiz.</p>
+    <p class="prov">Explainer v0, generated 2026-11-05 by Claude Fable 5.1 · source
+      <code>scripts/judge_claude.py</code> at commit <code>b3e6896</code> (2026-11-05) ·
+      data wnja:2.1, WLSP ver 1.0.1, <code>build/scored.parquet</code> of 2026-11-05 19:08,
+      <code>build/judge_prompts.jsonl</code> of 2026-11-05 18:24 · no API call made ·
+      regenerate when the code changes.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const QUESTIONS = [
+    {
+      q: "卸す has one wnja sense, one WLSP candidate, and p = 0.922. With the default flags, does it get a prompt?",
+      options: [
+        {t:"No: 0.922 is outside the band and a lone candidate has no second candidate for the margin rule; only --single-sample can pick it", ok:true},
+        {t:"Yes: every word with a single candidate is judged, because the scorer cannot verify them", ok:false},
+        {t:"Yes, if its p is above --high", ok:false},
+        {t:"No, because the judge only sees words with two or more wnja senses", ok:false},
+      ],
+      why:"select_words keeps a word if any pair has low <= p <= high, or if a sense has exactly two top candidates (n == 2) closer than margin. A lone candidate at 0.922 fails both. The lone-candidate sample is a separate, random, opt-in addition (judge_claude.py:189-197)."
+    },
+    {
+      q: "You change one sentence of SYSTEM and re-run --submit. What happens to the words already in build/judge.jsonl?",
+      options: [
+        {t:"They are all re-submitted: the cache key hashes SYSTEM together with the prompt, so every key changes", ok:true},
+        {t:"Nothing: the cache is keyed by lemma", ok:false},
+        {t:"Only words whose prompt text also changed are re-submitted", ok:false},
+        {t:"They are re-submitted only if --model also changed", ok:false},
+      ],
+      why:"WordCase.finish hashes SYSTEM + self.prompt (judge_claude.py:115). The model name is not part of the key, so switching --model reuses old verdicts, but any edit to the system prompt invalidates the whole cache."
+    },
+    {
+      q: "After --apply, a row has judge_same 0, judge_rel 'none', judge_conf 0.0. What does that tell you?",
+      options: [
+        {t:"The word was judged and the judge listed no link for this pair", ok:true},
+        {t:"The word was never sent to the judge", ok:false},
+        {t:"The judge returned a link with confidence 0", ok:false},
+        {t:"The pair was in the band but the request was refused", ok:false},
+      ],
+      why:"apply_verdicts gives null to every pair of a word not in judged_words, and ('none', 0.0) to a judged word's pair that the verdict did not mention (judge_claude.py:495-500). A refused or never-sent word has no cache record and stays null."
+    },
+    {
+      q: "The model answers with a link {wordnet: 'W3', wlsp: 'B1', relation: 'same'} for 鍔, which has only W1. What does parse_verdict do?",
+      options: [
+        {t:"Drops the link silently, because ('W3','B1') is not in case.pairs", ok:true},
+        {t:"Raises a KeyError", ok:false},
+        {t:"Maps W3 to the last wnja sense", ok:false},
+        {t:"Keeps it with confidence 0.0", ok:false},
+      ],
+      why:"parse_verdict looks the label pair up with case.pairs.get(...) and continues when the result is None or the relation is not in RELATIONS (judge_claude.py:298-300). Unknown labels never reach the cache."
+    },
+    {
+      q: "Why can --collect run on a machine without the wordnet database or bunruidb.txt?",
+      options: [
+        {t:"run_submit saved each case's lemma and label map in judge_batches.json, and run_collect rebuilds a bare WordCase from that", ok:true},
+        {t:"Batch results already contain sense ids and 見出し番号, so no mapping is needed", ok:false},
+        {t:"It re-reads build/judge_prompts.jsonl to rebuild the prompts", ok:false},
+        {t:"It cannot; main loads both before every mode", ok:false},
+      ],
+      why:"main returns right after run_collect (judge_claude.py:546-548), before wn and Wlsp.load. run_collect uses entry['cases'][custom_id]['pairs'] to build a WordCase with only its pairs set (judge_claude.py:452-453), which is all parse_verdict needs."
+    },
+    {
+      q: "黄色 has senses scored 0.912 against two adjacent WLSP positions and nothing in the band. Why is it still selected?",
+      options: [
+        {t:"The top two candidates of a sense are within 0.15 of each other, so the margin rule fires regardless of how high p is", ok:true},
+        {t:"Because 0.912 is above --high and high pairs are always re-checked", ok:false},
+        {t:"Because it has more than one wnja sense", ok:false},
+        {t:"It is not selected; only band pairs count", ok:false},
+      ],
+      why:"The ranked expression keeps each sense's two best candidates and selects senses whose gap is below margin (judge_claude.py:180-187). A tie at 0.912 has gap 0, so the word is chosen even though no pair is in the band; 916 of the 8,777 words are selected only this way."
+    },
+  ];
+
+  function shuffle(a){
+    for(let i=a.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  const root = document.getElementById('quizRoot');
+  QUESTIONS.forEach((item, qi)=>{
+    const q = document.createElement('div'); q.className='q';
+    const h = document.createElement('p'); h.className='qhead';
+    h.innerHTML = '<span>Q'+(qi+1)+'</span>'+item.q;
+    q.appendChild(h);
+    const ul = document.createElement('ul');
+    shuffle(item.options.slice()).forEach(opt=>{
+      const li=document.createElement('li');
+      const b=document.createElement('button');
+      b.className='opt'; b.type='button'; b.textContent=opt.t;
+      b.addEventListener('click',()=>{
+        if(q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        b.classList.add(opt.ok?'correct':'wrong');
+        ul.querySelectorAll('button').forEach(x=>{
+          x.disabled=true;
+          if(x.textContent===item.options.find(o=>o.ok).t) x.classList.add('correct');
+        });
+      });
+      li.appendChild(b); ul.appendChild(li);
+    });
+    q.appendChild(ul);
+    const why=document.createElement('p'); why.className='why';
+    why.innerHTML='<strong>Why:</strong> '+item.why;
+    q.appendChild(why);
+    root.appendChild(q);
+  });
+})();
+</script>

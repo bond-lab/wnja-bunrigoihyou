@@ -1,0 +1,789 @@
+<title>Building the WLSP dev set</title>
+<style>
+  /* Layout: one reading column (46rem), tables and code scroll inside their own boxes. */
+  :root{
+    --ground:#f5f6f9; --surface:#ffffff; --ink:#1c2230; --muted:#5b6473;
+    --accent:#3a4f9c; --accent-soft:#e6eaf7; --hair:#dfe3ec;
+    --s-sense:#2e7d4f; --s-synset:#a86e14; --s-nosyn:#b4433c; --s-hypo:#6b5aa6;
+    --code-bg:#eef0f5;
+    --serif:"Palatino Linotype","Palatino","Book Antiqua",Georgia,"Hiragino Mincho ProN","Yu Mincho",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Sans","Yu Gothic",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#12151c; --surface:#1a1e27; --ink:#e6e9f0; --muted:#9aa3b5;
+      --accent:#8ea0e6; --accent-soft:#232a40; --hair:#2b3140;
+      --s-sense:#5fc184; --s-synset:#dca24a; --s-nosyn:#e37b73; --s-hypo:#a897e3;
+      --code-bg:#151924; color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#12151c; --surface:#1a1e27; --ink:#e6e9f0; --muted:#9aa3b5;
+    --accent:#8ea0e6; --accent-soft:#232a40; --hair:#2b3140;
+    --s-sense:#5fc184; --s-synset:#dca24a; --s-nosyn:#e37b73; --s-hypo:#a897e3;
+    --code-bg:#151924; color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--serif);line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .wrap{max-width:46rem;margin:0 auto;padding-block:3rem 5rem;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+  .eyebrow{font-family:var(--sans);font-size:.72rem;font-weight:600;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
+  h1{font-size:2.1rem;line-height:1.15;margin:0 0 .4rem;text-wrap:balance;font-weight:600}
+  .lede{font-size:1.12rem;color:var(--muted);margin:0 0 1.4rem;text-wrap:balance}
+  .meta{font-family:var(--mono);font-size:.78rem;color:var(--muted);
+    border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);
+    padding:.6rem 0;display:flex;gap:1.2rem;flex-wrap:wrap}
+
+  nav.toc{margin:2rem 0 2.5rem;font-family:var(--sans);font-size:.9rem}
+  nav.toc ol{list-style:none;counter-reset:s;padding:0;margin:0;display:grid;gap:.3rem}
+  nav.toc li{counter-increment:s}
+  nav.toc a{color:var(--ink);text-decoration:none;display:flex;gap:.6rem;
+    padding:.35rem .5rem;border-radius:6px}
+  nav.toc a::before{content:counter(s,decimal-leading-zero);color:var(--accent);
+    font-variant-numeric:tabular-nums;font-weight:600}
+  nav.toc a:hover{background:var(--accent-soft)}
+
+  section{margin:3rem 0}
+  h2{font-size:1.5rem;margin:0 0 .8rem;font-weight:600;padding-bottom:.3rem;
+    border-bottom:2px solid var(--accent-soft)}
+  h3{font-size:1.06rem;font-family:var(--sans);font-weight:600;margin:1.6rem 0 .4rem}
+  p{margin:.8rem 0}
+  a{color:var(--accent)}
+  strong{font-weight:600}
+  .ja{font-family:var(--sans)}
+  .en{color:var(--muted)}
+
+  code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);
+    padding:.1em .35em;border-radius:4px}
+  pre{font-family:var(--mono);font-size:.8rem;line-height:1.5;background:var(--code-bg);
+    border:1px solid var(--hair);border-radius:10px;padding:1rem 1.1rem;
+    overflow-x:auto;white-space:pre;margin:1rem 0}
+  pre code{background:none;padding:0;font-size:1em}
+  pre.data{background:var(--surface)}
+  pre.query{border-left:3px solid var(--accent)}
+  .ref{font-family:var(--mono);font-size:.76rem;color:var(--muted);display:block;margin:-.4rem 0 .9rem}
+  .cap{font-family:var(--sans);font-size:.78rem;color:var(--muted);margin:-.6rem 0 1rem}
+
+  .chip{font-family:var(--mono);font-size:.74rem;font-weight:600;padding:.12em .5em;
+    border-radius:999px;white-space:nowrap;border:1px solid currentColor}
+  .k-sense{color:var(--s-sense)} .k-synset{color:var(--s-synset)}
+  .k-nosyn{color:var(--s-nosyn)} .k-hypo{color:var(--s-hypo)}
+
+  .flow{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;justify-content:center;
+    margin:1.4rem 0;font-family:var(--sans);font-size:.82rem}
+  .node{background:var(--surface);border:1px solid var(--hair);border-radius:8px;
+    padding:.5rem .7rem;text-align:center;box-shadow:0 1px 0 var(--hair);min-width:0}
+  .node b{display:block;color:var(--accent);font-size:.9rem}
+  .node small{color:var(--muted);font-family:var(--mono);font-size:.72rem}
+  .arrow{color:var(--muted);font-weight:700}
+  .arrow small{display:block;font-size:.66rem;font-family:var(--mono);font-weight:400;color:var(--accent)}
+
+  table.toy{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.86rem;font-family:var(--sans)}
+  table.toy th,table.toy td{text-align:left;padding:.5rem .55rem;border-bottom:1px solid var(--hair);vertical-align:top}
+  table.toy th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  table.toy td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .wrap-x{overflow-x:auto;min-width:0}
+
+  .callout{background:var(--accent-soft);border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .callout p{margin:.3rem 0}
+
+  .caveat{font-family:var(--sans);font-size:.86rem;line-height:1.45;color:var(--ink);
+    background:color-mix(in srgb,var(--s-synset) 12%,transparent);
+    border:1px solid color-mix(in srgb,var(--s-synset) 45%,transparent);
+    border-radius:8px;padding:.7rem .9rem;margin:1.2rem 0}
+  .caveat b{color:var(--s-synset)}
+
+  .quiz .q{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:1.1rem 1.2rem;margin:1rem 0}
+  .quiz .qhead{font-weight:600;margin:0 0 .7rem;font-family:var(--sans);font-size:1rem}
+  .quiz .qhead span{color:var(--accent);font-family:var(--mono);margin-right:.5rem}
+  .quiz ul{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
+  .quiz button.opt{width:100%;text-align:left;font:inherit;font-family:var(--sans);font-size:.92rem;
+    background:var(--ground);color:var(--ink);cursor:pointer;border:1px solid var(--hair);
+    border-radius:8px;padding:.6rem .8rem;transition:border-color .15s,background .15s}
+  .quiz button.opt:hover{border-color:var(--accent)}
+  .quiz button.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .quiz button.opt.correct{border-color:var(--s-sense);background:color-mix(in srgb,var(--s-sense) 14%,transparent)}
+  .quiz button.opt.wrong{border-color:var(--s-nosyn);background:color-mix(in srgb,var(--s-nosyn) 12%,transparent)}
+  .quiz button.opt[disabled]{cursor:default}
+  .quiz .why{font-size:.88rem;color:var(--muted);margin:.7rem 0 0;padding-left:.6rem;border-left:2px solid var(--hair);display:none}
+  .quiz .q.answered .why{display:block}
+
+  footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--hair);font-family:var(--sans);font-size:.82rem;color:var(--muted)}
+  .prov{font-family:var(--mono);font-size:.75rem;line-height:1.55;margin-top:.7rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">wnja-bunrigoihyou · Code explainer</p>
+    <h1>Building the WLSP dev set</h1>
+    <p class="lede">How <code>build_devset.py</code> turns the TUFS basic vocabulary into
+      734 gold links between 分類語彙表 records and Japanese WordNet senses.</p>
+    <div class="meta">
+      <span>scripts/build_devset.py</span><span>313 lines</span>
+      <span>deps: wn, scripts/wlsp.py</span>
+      <span>run: uv run scripts/build_devset.py --tufs ../tufs -o dev/devset.tsv</span>
+    </div>
+    <p class="caveat"><b>Generated by an AI.</b> This page was written from the code and
+      can be wrong: a misread line, an invented detail, a stale number. Trust the code,
+      not this page. Check anything that matters against
+      <code>scripts/build_devset.py</code> and run it. Every example and count here comes
+      from the committed <code>dev/devset.tsv</code> (734 rows), which a fresh run on
+      2026-11-05 reproduced byte for byte. See <a href="#trust">How much to trust this</a>.</p>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#background">Background: three resources, one key</a></li>
+      <li><a href="#intuition">Intuition: seven records by hand</a></li>
+      <li><a href="#code">Code: how the script runs</a></li>
+      <li><a href="#quiz">Quiz: check yourself</a></li>
+      <li><a href="#trust">How much to trust this</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <p>The project maps senses of the <strong>Japanese WordNet</strong> (wnja 2.1) to
+      records of the <strong>分類語彙表</strong> (Word List by Semantic Principles,
+      WLSP), NINJAL's thesaurus. To train and test that mapping we need a few hundred
+      pairs that are known to be right: a <em>dev set</em>. This script builds it by
+      composing two resources that already agree on a key.</p>
+
+    <h3>WLSP: a record is a sense of a headword</h3>
+    <p><code>bunruidb.txt</code> has 101,067 records. Each is one headword at one
+      position in the thesaurus, so the same word listed under two meanings is two
+      records. <code>wlsp.py</code> reads a record into a <code>WlspEntry</code>
+      (<span class="ref" style="display:inline">wlsp.py:150–178</span>). Three real
+      records that the dev set uses:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>record_id</th><th>midashi_no</th><th>type</th><th>code</th>
+        <th>labels</th><th>midashi</th><th>lemma</th><th>yomi</th></tr></thead>
+      <tbody>
+        <tr><td class="num">084044</td><td class="num">80089</td><td class="num">1</td>
+          <td class="num">2.3520-01-01-02</td><td class="ja">用/活動/交わり/応接・送迎</td>
+          <td class="ja">会う</td><td class="ja">会う</td><td class="ja">あう</td></tr>
+        <tr><td class="num">007449</td><td class="num">07093</td><td class="num">A</td>
+          <td class="num">1.1600-01-01-01</td><td class="ja">体/関係/時間/時間</td>
+          <td class="ja">時（とき）</td><td class="ja">時</td><td class="ja">とき</td></tr>
+        <tr><td class="num">016869</td><td class="num">15919</td><td class="num">B</td>
+          <td class="num">1.2150-03-02-04</td><td class="ja">体/主体/家族/親戚</td>
+          <td class="ja">伯母・叔母（おば）</td><td class="ja">伯母・叔母</td><td class="ja">おば</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The <strong>code</strong> <code>2.3520-01-01-02</code> is 分類番号 (類.部門中項目分類項目),
+      段落, 小段落 and 語番号 joined by hyphens (<code>WlspEntry.code</code>,
+      <span class="ref" style="display:inline">wlsp.py:66–69</span>); its first digit is
+      the 類: 1 体 (nouns), 2 用 (verbs), 3 相 (adjectives and adverbs), 4 其他. The
+      <strong>lemma</strong> is the 見出し本体 with reading hints and usage notes stripped
+      by <code>normalise_midashi</code> (<span class="ref" style="display:inline">wlsp.py:102–111</span>):
+      <span class="ja">時（とき）</span> becomes <span class="ja">時</span>,
+      <span class="ja">浴びる［一風呂〜］</span> becomes <span class="ja">浴びる</span>,
+      <span class="ja">は（穿）く［ズボンを〜］</span> becomes <span class="ja">はく</span>.
+      135 of the 734 dev rows have a 見出し that differs from its lemma this way.
+      Record types: <code>A</code> is a plain headword, <code>B</code> a headword with
+      several spellings or readings, and <code>1</code>, <code>2</code>, … its children.
+      Of the 503 dev records, 484 are <code>A</code>, 10 are <code>B</code>, 6 are
+      <code>1</code> and 3 are <code>2</code>, so <span class="ja">会う</span> above is a
+      child record (type <code>1</code>) of 見出し番号 80089.</p>
+
+    <h3>TUFS: a basic vocabulary keyed by WLSP record</h3>
+    <p>The TUFS basic vocabulary (Bond et al. 2020) is a multilingual word list whose
+      concept ID <code>cid</code> <strong>is the WLSP record ID</strong>, without the zero
+      padding. <code>tufs-vocab.tsv</code> (16,935 rows after the header) has one row per
+      language per concept. For <code>cid</code> 84044 it has 26 rows; the two the script
+      reads are</p>
+    <pre class="data">$ grep -P '^84044\t(ja|en)\t' ../tufs/tufs-vocab.tsv | cut -f1-5
+84044	en	742	meet	会う
+84044	ja	903	会います	【よみ】; あいます;【意味】; meet</pre>
+    <p>Three things to notice. The Japanese lemma is the <strong>polite ます form</strong>
+      <span class="ja">会います</span>, while WLSP has the dictionary form
+      <span class="ja">会う</span>. The reading sits inside the comment after
+      <span class="ja">【よみ】</span>. And the English row's comment is just the Japanese
+      gloss. Rows with <code>cid</code> <code>None</code> (1,213 of them) are words with no
+      WLSP record and are skipped. Reading the file gives 850 concepts with an English or
+      Japanese row; 799 have a Japanese row.</p>
+    <p>Some TUFS Japanese forms carry a disambiguation index or several variants:
+      <span class="ja">入れます(2)</span> "put", <span class="ja">切ります(2)</span> "cut",
+      <span class="ja">あの(1)</span> "that", <span class="ja">よく(1)</span> "often",
+      <span class="ja">～語</span> "word". The index tells TUFS entries apart; it is not part
+      of the word.</p>
+
+    <h3>tufs-omw-map: concept to Princeton synset</h3>
+    <p><code>tufs-omw-map.tsv</code> links 503 concepts to 734 WordNet 3.0 synsets with a
+      relation. It is three columns and no header:</p>
+    <pre class="data">$ grep -P '^(84044|9206|30521)\t' ../tufs/tufs-omw-map.tsv
+9206	hyponym	15209413-n
+30521	multi	06286395-n
+84044	synonym	01470670-v
+84044	synonym	02428924-v
+$ cut -f2 ../tufs/tufs-omw-map.tsv | sort | uniq -c
+     11 hyponym
+      2 multi
+    721 synonym</pre>
+    <p><code>synonym</code> says the WLSP record and the synset mean the same thing;
+      <code>hyponym</code> says the record is narrower (<span class="ja">来月</span> "next
+      month" under <em>month</em> 15209413-n, <span class="ja">交番</span> "police box"
+      under <em>police station</em>); <code>multi</code> marks a multiword or affix item
+      (<span class="ja">～語</span>, <span class="ja">あの(2)</span> "Excuse me."). A concept
+      can link to several synsets: <span class="ja">会う</span> has two, and
+      <span class="ja">いい</span> "good" (cid 91633) has twelve, one per sense of
+      <em>good</em>. That is why 503 records give 734 rows.</p>
+
+    <h3>The wordnets, through the <code>wn</code> library</h3>
+    <p>Three lexicons sit in the project-local database <code>.wn_data/</code>:
+      <code>wnja:2.1</code>, <code>tufs-ja:2026.04.06</code> and <code>omw-en:1.4</code>.
+      A wnja synset ID is the Princeton offset with a prefix, so 00604617-a is
+      <code>wnja-00604617-a</code>. Each sense belongs to a word that lists a lemma and
+      extra <em>forms</em>, which in wnja are the katakana and hiragana readings:</p>
+    <pre class="data query">import wn, pathlib
+wn.config.data_directory = pathlib.Path(".wn_data").resolve()
+wnja = wn.Wordnet(lexicon="wnja:2.1")
+s = wnja.synset("wnja-00604617-a")
+print(s.ili, s.definition())
+for sense in s.senses():
+    print(sense.id, sense.word().lemma(), sense.word().forms())</pre>
+    <pre class="data">i3356 快適さまたは目的またはニーズに適している
+wnja-00604617-a-2267 有利 ['有利', 'ユウリ', '優利', 'ゆうり']
+wnja-00604617-a-12570 簡便 ['簡便', 'カンベン', 'かんべん']
+wnja-00604617-a-12571 調法 ['調法', 'チョウホウ', 'ちょうほう']
+wnja-00604617-a-12572 都合よい ['都合よい', 'ツゴウヨイ', 'つごうよい']
+wnja-00604617-a-12573 重宝 ['重宝', 'チョウホウ', 'ちょうほう']
+wnja-00604617-a-12574 便利 ['便利', 'ベンリ', 'べんり']
+wnja-00604617-a-12575 便 ['便', 'ベン', 'べん']
+wnja-00604617-a-12576 便宜 ['便宜', 'ベンギ', 'べんぎ']
+wnja-00604617-a-12577 好都合 ['好都合', 'コウツゴウ', 'こうつごう']
+wnja-00604617-a-12578 利便 ['利便', 'リベン', 'りべん']</pre>
+    <p>The sense ID <code>wnja-00604617-a-12574</code> is what the dev set wants: it names
+      <span class="ja">便利</span> in exactly this synset. Not every wnja word has readings:
+      <code>wnja-90000500-n</code> lists <span class="ja">一昨年</span> with forms
+      <code>['一昨年']</code> only, and not every Princeton synset has Japanese members at
+      all (<code>wnja-13836136-n</code>, <em>west</em>, does not exist). The
+      <strong>TUFS Japanese wordnet</strong> <code>tufs-ja</code> was built from the same
+      vocabulary, so it has one sense per linked Japanese lemma, named after the lemma:
+      <code>tufs-ja-会います-02428924-v</code>, <code>tufs-ja-西-13836136-n</code>,
+      <code>tufs-ja-便利-00604617-a</code>.</p>
+
+    <div class="callout">
+      <p><strong>Verbs are keyed by the dictionary form.</strong> The dev set's
+        <code>lemma</code> column is always the WLSP 見出し本体 (<span class="ja">会う</span>,
+        <span class="ja">入れる</span>, <span class="ja">架ける</span>), because that is what
+        wnja lists too. The TUFS polite form is kept beside it in its own
+        <code>polite</code> column (<span class="ja">会います</span>,
+        <span class="ja">入れます</span>, <span class="ja">かけます</span>) so that the TUFS
+        wordnet, whose sense IDs contain the polite form, can still be joined. 88 of the
+        734 rows have a polite form; all 88 are 類 2 (用) records.</p>
+    </div>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <p>For each line of <code>tufs-omw-map.tsv</code>: take the WLSP record the
+      <code>cid</code> names, open the wnja synset the line names, and look for a sense in
+      that synset whose word matches the WLSP headword. Found: a sense-level link. Not
+      found: still a useful row, labelled by how far the lookup got.</p>
+
+    <div class="wrap-x">
+      <div class="flow">
+        <div class="node"><b>tufs-omw-map</b><small>84044 synonym 02428924-v</small></div>
+        <div class="arrow">→<small>cid.zfill(6)</small></div>
+        <div class="node"><b>WLSP record</b><small>084044 会う / あう</small></div>
+        <div class="arrow">→<small>candidates</small></div>
+        <div class="node"><b>strings to try</b><small>会う, 会います, あう, あいます</small></div>
+        <div class="arrow">→<small>wnja-{pwn}</small></div>
+        <div class="node"><b>wnja synset</b><small>wnja-02428924-v</small></div>
+        <div class="arrow">→<small>forms of each sense</small></div>
+        <div class="node"><b>status</b><small>sense / synset-only / …</small></div>
+      </div>
+    </div>
+
+    <p>Seven real rows by hand. The strings tried are, in order, the WLSP lemma, the TUFS
+      lemma, the WLSP reading, the TUFS reading; a hit on any of them ends the search.</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>cid</th><th>WLSP lemma / yomi</th><th>TUFS form</th><th>synset</th>
+        <th>wnja members (lemma; readings omitted)</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="num">3472</td><td class="ja">便利 / べんり</td><td class="ja">便利</td>
+          <td class="num">synonym 00604617-a</td>
+          <td class="ja">有利 簡便 調法 都合よい 重宝 <strong>便利</strong> 便 便宜 好都合 利便</td>
+          <td><span class="chip k-sense">sense</span> wnja-00604617-a-12574, matched on
+            <code>wlsp_lemma</code></td></tr>
+        <tr><td class="num">16869</td><td class="ja">伯母・叔母 / おば</td><td class="en">(no ja row)</td>
+          <td class="num">synonym 09823502-n</td>
+          <td class="ja">伯母 伯母さま 伯母さん 伯母御 叔母 叔母さま 叔母御 叔母様</td>
+          <td><span class="chip k-sense">sense</span> wnja-09823502-n-65406: the lemma
+            <span class="ja">伯母・叔母</span> misses, but <span class="ja">おば</span> is a form of
+            <span class="ja">伯母</span>; <code>match</code> = <code>wlsp_yomi</code></td></tr>
+        <tr><td class="num">84044</td><td class="ja">会う / あう</td><td class="ja">会います</td>
+          <td class="num">synonym 02428924-v</td>
+          <td class="ja">集合 集まる 参集 集結 会合 会同 集会 会する … 集う</td>
+          <td><span class="chip k-synset">synset-only</span> none of the four strings is a
+            member; wnja has <span class="ja">会う</span> in nine other synsets</td></tr>
+        <tr><td class="num">9108</td><td class="ja">おととし / おととし</td><td class="ja">おととし</td>
+          <td class="num">synonym 90000500-n</td>
+          <td class="ja">一昨年</td>
+          <td><span class="chip k-synset">synset-only</span> the same word, but
+            <span class="ja">一昨年</span> has no reading listed, so no string matches</td></tr>
+        <tr><td class="num">10905</td><td class="ja">西 / にし</td><td class="ja">西</td>
+          <td class="num">synonym 13836136-n</td>
+          <td class="en">no wnja synset</td>
+          <td><span class="chip k-nosyn">no-synset</span> <code>wnja.synset()</code> raises;
+            the TUFS wordnet has <code>tufs-ja-西-13836136-n</code></td></tr>
+        <tr><td class="num">9206</td><td class="ja">来月 / らいげつ</td><td class="ja">来月</td>
+          <td class="num">hyponym 15209413-n</td>
+          <td class="ja">月 暦月</td>
+          <td><span class="chip k-hypo">hyponym</span> "next month" is narrower than
+            <em>month</em>; no sense is expected</td></tr>
+        <tr><td class="num">94344</td><td class="ja">暑い / あつい</td><td class="ja">暑い</td>
+          <td class="num">hyponym 01247240-a</td>
+          <td class="ja">… 暑い … 熱い …</td>
+          <td><span class="chip k-hypo">hyponym</span> even though
+            <code>wnja_sense</code> = wnja-01247240-a-21802 was found: the relation decides
+            the status first</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>The whole dev set sorts into four buckets. Counts are from
+      <code>dev/devset.tsv</code>; the words beside each are its first rows in file order.</p>
+    <ul>
+      <li><span class="chip k-sense">sense</span> &nbsp;599: a wnja sense carries the WLSP
+        headword. <span class="ja">便利</span>, <span class="ja">時</span>,
+        <span class="ja">いつ</span>, <span class="ja">伯母・叔母</span>; 597 matched on the WLSP
+        lemma, 2 on the WLSP reading (<span class="ja">伯母・叔母</span>,
+        <span class="ja">架ける</span> found under <span class="ja">掛ける</span>).</li>
+      <li><span class="chip k-synset">synset-only</span> &nbsp;97: the synset is in wnja but
+        has no member spelled like the headword. <span class="ja">毎月</span> beside
+        <span class="ja">月に1回, 月毎に</span>; <span class="ja">おととし</span> beside
+        <span class="ja">一昨年</span>; <span class="ja">おととい</span>; <span class="ja">夕べ</span>;
+        <span class="ja">会う</span> twice. These are candidate new wnja senses.</li>
+      <li><span class="chip k-nosyn">no-synset</span> &nbsp;27: wnja 2.1 has no Japanese
+        entry for the synset. <span class="ja">西</span> "west", <span class="ja">縦</span>
+        "vertical", <span class="ja">いくつ</span> "How many" (80001077-n, a TUFS-only
+        synset), <span class="ja">わたし</span> "I" (77000015-n). 22 of the 27 still get a
+        TUFS sense.</li>
+      <li><span class="chip k-hypo">hyponym</span> &nbsp;11: the TUFS link is
+        <code>hyponym</code>. <span class="ja">来月</span>, <span class="ja">交番</span>,
+        <span class="ja">茶わん</span> (two synsets), <span class="ja">かぶる</span>,
+        <span class="ja">着る</span>, <span class="ja">はく</span>, <span class="ja">暑い</span>,
+        <span class="ja">寒い</span>, <span class="ja">熱い</span>, <span class="ja">冷たい</span>.
+        Six of them did find a wnja sense anyway (<span class="ja">着る</span>,
+        <span class="ja">はく</span> as <span class="ja">佩く</span>, and the four temperature
+        adjectives); the sense ID is kept in the row.</li>
+    </ul>
+    <p>Across the buckets, 648 rows carry a <code>tufs_sense</code> and only 26 have
+      neither a wnja nor a TUFS sense. Those 26 are the 16 synset-only and 4 no-synset rows
+      whose concept has no Japanese TUFS row at all (<span class="ja">時</span> "time" is
+      one: its <code>tufs_form</code> is empty), plus 5 hyponym rows and
+      <span class="ja">あの(2)</span>. Reproduce the counts with polars:</p>
+    <pre class="data query">import polars as pl
+df = pl.read_csv("dev/devset.tsv", separator="\t", infer_schema_length=0).fill_null("")
+print(df.shape, df["cid"].n_unique())
+print(df.group_by("status").len().sort("len", descending=True))
+print(df.group_by("match").len())
+print((df["tufs_sense"] != "").sum(), ((df["tufs_sense"] == "") &amp; (df["wnja_sense"] == "")).sum())</pre>
+    <pre class="data">(734, 21) 503
+status        len
+sense         599
+synset-only    97
+no-synset      27
+hyponym        11
+match        len
+wlsp_lemma   603
+             129
+wlsp_yomi      2
+648 26</pre>
+    <p>603 lemma matches plus 2 reading matches is 605, six more than the 599
+      <span class="chip k-sense">sense</span> rows: the six hyponym rows that found a sense.</p>
+  </section>
+
+  <section id="code">
+    <h2>Code</h2>
+    <p>Nine parts, in the order they run.</p>
+
+    <h3>1 · What the file says it does</h3>
+    <span class="ref">build_devset.py:1–15</span>
+    <p>The module docstring is the design in four sentences, and its first paragraph
+      becomes the <code>--help</code> description (line 265). The usage line is the
+      command that produced <code>dev/devset.tsv</code>. <code>wlsp.py</code> is imported
+      from the script's own directory (lines 30–31) for <code>WlspEntry</code>,
+      <code>hira_to_kata</code> and <code>read_wlsp</code>.</p>
+
+    <h3>2 · <code>TufsEntry</code> and <code>polite_form</code></h3>
+    <span class="ref">build_devset.py:36–63</span>
+    <p>A TUFS concept is reduced to four strings: <code>cid</code>, Japanese
+      <code>lemma</code>, <code>yomi</code>, <code>english</code>.
+      <code>polite_form</code> decides whether the TUFS string is a ます verb worth keeping
+      in the <code>polite</code> column. It takes the first <code>;</code>-separated
+      variant, strips a trailing <code>(2)</code>-style index, and keeps the result only
+      if it ends in ます:</p>
+    <pre><code>_INDEX = re.compile(r"\(\d+\)$")
+
+def polite_form(tufs_form: str) -> str:
+    form = _INDEX.sub("", tufs_form.split(";")[0].strip())
+    return form if form.endswith("ます") else ""</code></pre>
+    <p>Real inputs through it (the first five are TUFS forms in the dev set; the last is
+      made up to show the <code>;</code> split, since no Japanese row in
+      <code>tufs-vocab.tsv</code> has one):</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>tufs_form</th><th>polite_form()</th><th>why</th></tr></thead>
+      <tbody>
+        <tr><td class="ja">会います</td><td class="ja">会います</td><td>ends in ます</td></tr>
+        <tr><td class="ja">入れます(2)</td><td class="ja">入れます</td><td>index removed, then ends in ます</td></tr>
+        <tr><td class="ja">かけます</td><td class="ja">かけます</td><td>kana verbs count too</td></tr>
+        <tr><td class="ja">あの(1)</td><td class="en">""</td><td>index removed; <span class="ja">あの</span> is not a ます form</td></tr>
+        <tr><td class="ja">便利</td><td class="en">""</td><td>a noun</td></tr>
+        <tr><td class="ja">行きます;参ります</td><td class="ja">行きます</td><td>only the first variant is used</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <pre class="data query">import sys; sys.path.insert(0, "scripts")
+from build_devset import polite_form
+for f in ["会います", "入れます(2)", "かけます", "あの(1)", "便利", "行きます;参ります"]:
+    print(repr(f), "->", repr(polite_form(f)))</pre>
+
+    <h3>3 · <code>read_tufs</code>: Japanese and English rows by concept</h3>
+    <span class="ref">build_devset.py:66–96</span>
+    <p>One pass over <code>tufs-vocab.tsv</code>. Rows with <code>cid</code>
+      <code>None</code> are skipped (lines 87–88); English rows fill
+      <code>english[cid]</code>, Japanese rows fill <code>japanese[cid]</code> with the
+      lemma and the reading pulled from the comment by <code>_yomi_from_comment</code>:</p>
+    <pre><code>m = re.search(r"【よみ】;\s*([^;【]+)", comment)
+return m.group(1).strip() if m else ""</code></pre>
+    <p>On <code>'【よみ】; あいます;【意味】; meet'</code> this returns
+      <span class="ja">あいます</span>. The two dicts are merged over the union of their keys
+      (lines 93–96), so a concept with only an English row, such as 7449 <em>time</em>, gets
+      <code>TufsEntry('7449', '', '', 'time')</code>. 850 entries come out; 57 of the 503
+      linked concepts have an empty Japanese lemma.</p>
+
+    <h3>4 · <code>read_omw_map</code>: synset links by concept</h3>
+    <span class="ref">build_devset.py:99–112</span>
+    <p>A <code>defaultdict(list)</code> keyed by <code>cid</code>, each value the list of
+      <code>(relation, synset)</code> pairs in file order. <code>links["84044"]</code> is
+      <code>[('synonym', '01470670-v'), ('synonym', '02428924-v')]</code>;
+      <code>links["91633"]</code> has twelve pairs.</p>
+
+    <h3>5 · <code>find_sense</code>: which sense in the synset?</h3>
+    <span class="ref">build_devset.py:115–134</span>
+    <p>Given a wnja synset and the ordered candidate strings, compare each candidate with
+      every sense's lemma and forms. The hiragana candidate is also tried in katakana,
+      because wnja forms carry both:</p>
+    <pre><code>for method, cand in candidates:
+    if not cand:
+        continue
+    for sense in senses:
+        word = sense.word()
+        forms = {word.lemma(), *word.forms()}
+        if cand in forms or hira_to_kata(cand) in forms:
+            return sense.id, word.lemma(), method
+return "", "", ""</code></pre>
+    <p>For <span class="ja">架ける</span> (cid 69867, synset 02741003-v) the members are
+      <span class="ja">掛ける</span> with forms <code>['掛ける', 'カケル', '懸ける', 'かける']</code>
+      and <span class="ja">下げる</span>. <span class="ja">架ける</span> misses,
+      <span class="ja">かけます</span> misses, <span class="ja">かける</span> hits, so the row gets
+      <code>wnja-02741003-v-5881</code>, <code>wnja_lemma</code> <span class="ja">掛ける</span>,
+      <code>match</code> <code>wlsp_yomi</code>. The candidate order matters: the WLSP lemma
+      is tried before the reading so that <span class="ja">伯母・叔母</span> cannot be
+      claimed by a reading when a spelling is present. In this build the second and
+      fourth candidates (<code>tufs_lemma</code>, <code>tufs_yomi</code>) never produced a
+      match: the TUFS lemma is either the WLSP lemma already or a ます form wnja does not
+      list.</p>
+
+    <h3>6 · <code>row_status</code>: how far did we get?</h3>
+    <span class="ref">build_devset.py:137–154</span>
+    <pre><code>if relation == "hyponym":
+    return "hyponym"
+if not synset_found:
+    return "no-synset"
+return "sense" if sense_found else "synset-only"</code></pre>
+    <p>The order is the whole rule. A <code>hyponym</code> link is labelled
+      <span class="chip k-hypo">hyponym</span> before the synset is even considered, which
+      is why <span class="ja">暑い</span> keeps its found sense ID but not the
+      <span class="chip k-sense">sense</span> status. <code>multi</code> links fall through
+      like <code>synonym</code>: <span class="ja">～語</span> is
+      <span class="chip k-sense">sense</span>, <span class="ja">あの(2)</span> is
+      <span class="chip k-nosyn">no-synset</span>.</p>
+
+    <h3>7 · <code>tufs_sense_id</code>: the same lookup in the TUFS wordnet</h3>
+    <span class="ref">build_devset.py:157–178</span>
+    <p>The TUFS Japanese wordnet names its synsets <code>tufs-ja-{pwn}</code> and has one
+      sense per Japanese lemma, so the lookup is simpler: open the synset, return the
+      sense whose word lemma is one of the <code>;</code>-separated TUFS variants. The
+      TUFS lemma here is the raw string, polite form and all, because that is what the
+      TUFS wordnet was built from: <code>tufs-ja-会います-02428924-v</code>. With no TUFS
+      wordnet (<code>--tufs-lexicon ''</code>) or no Japanese lemma it returns
+      <code>""</code>.</p>
+
+    <h3>8 · <code>build_rows</code>: compose one row per (record, synset)</h3>
+    <span class="ref">build_devset.py:181–247</span>
+    <p>Concepts are visited in numeric order of <code>cid</code> (line 201), each padded
+      to six digits to find its WLSP record (line 202); a linked concept with no record
+      would be logged and skipped (none is, in this build). The four candidate strings are
+      built once per concept (lines 207–212):</p>
+    <pre><code>candidates = [
+    ("wlsp_lemma", record.lemma),
+    ("tufs_lemma", entry.lemma.split(";")[0].strip()),
+    ("wlsp_yomi", record.yomi),
+    ("tufs_yomi", entry.yomi),
+]</code></pre>
+    <p>For 84044 that is <code>[('wlsp_lemma', '会う'), ('tufs_lemma', '会います'),
+      ('wlsp_yomi', 'あう'), ('tufs_yomi', 'あいます')]</code>. Then, per link, the synset
+      <code>wnja-{pwn}</code> is fetched; <code>wn.Error</code> means it is absent and is
+      logged as a warning (lines 213–219). <code>find_sense</code> and
+      <code>row_status</code> fill the row (lines 220–221), and the dict on lines 222–246
+      fixes the column order of the TSV. The columns, with the
+      <span class="ja">便利</span> row as the example:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>column</th><th>from</th><th>便利 (cid 3472)</th></tr></thead>
+      <tbody>
+        <tr><td><code>cid</code></td><td>tufs-omw-map; = WLSP record ID unpadded</td><td class="num">3472</td></tr>
+        <tr><td><code>wlsp_record</code>, <code>wlsp_midashi_no</code></td><td>レコードID, 見出し番号</td><td class="num">003472, 03279</td></tr>
+        <tr><td><code>wlsp_code</code></td><td><code>WlspEntry.code</code></td><td class="num">1.1346-05-01-01</td></tr>
+        <tr><td><code>wlsp_labels</code></td><td>類/部門/中項目/分類項目</td><td class="ja">体/関係/様相/難易・安危</td></tr>
+        <tr><td><code>wlsp_midashi</code>, <code>wlsp_yomi</code></td><td>見出し and 読み as given</td><td class="ja">便利, べんり</td></tr>
+        <tr><td><code>lemma</code></td><td><code>WlspEntry.lemma</code>: 見出し本体 with notes stripped</td><td class="ja">便利</td></tr>
+        <tr><td><code>polite</code></td><td><code>polite_form(entry.lemma)</code></td><td class="en">"" (a noun; 会う has 会います)</td></tr>
+        <tr><td><code>tufs_form</code>, <code>tufs_en</code></td><td>raw TUFS Japanese string, English lemma</td><td class="ja">便利, <span class="en">convenient</span></td></tr>
+        <tr><td><code>relation</code>, <code>pwn30</code></td><td>the tufs-omw-map line</td><td class="num">synonym, 00604617-a</td></tr>
+        <tr><td><code>wnja_synset</code>, <code>ili</code></td><td>the wnja synset, if found, and its ILI</td><td class="num">wnja-00604617-a, i3356</td></tr>
+        <tr><td><code>wnja_sense</code>, <code>wnja_lemma</code>, <code>match</code></td><td><code>find_sense</code></td><td class="num">wnja-00604617-a-12574, 便利, wlsp_lemma</td></tr>
+        <tr><td><code>status</code></td><td><code>row_status</code></td><td><span class="chip k-sense">sense</span></td></tr>
+        <tr><td><code>tufs_sense</code></td><td><code>tufs_sense_id</code></td><td class="num">tufs-ja-便利-00604617-a</td></tr>
+        <tr><td><code>wnja_definition</code></td><td><code>synset.definition()</code></td><td class="ja">快適さまたは目的またはニーズに適している</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>9 · <code>write_tsv</code> and <code>main</code></h3>
+    <span class="ref">build_devset.py:250–309</span>
+    <p><code>write_tsv</code> takes the column order from the first row's keys and writes
+      UTF-8 with <code>\n</code> line ends. <code>main</code> parses the paths and lexicon
+      names, points <code>wn</code> at <code>.wn_data</code> before opening any wordnet
+      (line 284, which must come first or <code>wn</code> would use its default
+      directory), reads the three inputs, builds and writes the rows, and logs a summary.
+      A run on 2026-11-05 into a scratch file, identical to the committed
+      <code>dev/devset.tsv</code>, ended with:</p>
+    <pre class="data">WARNING wnja-77000079-a not in wnja (cid 90814)
+WARNING wnja-00050681-r not in wnja (cid 91248)
+WARNING wnja-80000672-x not in wnja (cid 100468)
+INFO wrote 734 rows for 503 concepts to dev/devset.tsv
+INFO relations: {'synonym': 721, 'hyponym': 11, 'multi': 2}
+INFO status: {'sense': 599, 'synset-only': 97, 'hyponym': 11, 'no-synset': 27}
+INFO rows with a TUFS sense: 648; with neither wnja nor TUFS sense: 26
+INFO concepts with a WLSP record but no synset link: 343</pre>
+    <p>One warning per missing synset, 27 in all. The last line counts the 343 TUFS
+      concepts that have a Japanese row and a WLSP record but no line in
+      <code>tufs-omw-map.tsv</code>; they are not in the dev set. The first lines of the
+      output, cut to the first thirteen columns:</p>
+    <pre class="data">$ head -4 dev/devset.tsv | cut -f1-13
+cid	wlsp_record	wlsp_midashi_no	wlsp_code	wlsp_labels	wlsp_midashi	lemma	polite	wlsp_yomi	tufs_form	tufs_en	relation	pwn30
+3472	003472	03279	1.1346-05-01-01	体/関係/様相/難易・安危	便利	便利		べんり	便利	convenient	synonym	00604617-a
+7449	007449	07093	1.1600-01-01-01	体/関係/時間/時間	時（とき）	時		とき		time	synonym	15122231-n
+7603	007603	07243	1.1611-01-01-01	体/関係/時間/時機・時刻	いつ	いつ		いつ	いつ	when	synonym	77000104-n</pre>
+  </section>
+
+  <section id="quiz" class="quiz">
+    <h2>Quiz</h2>
+    <p>Six questions on the substance. Pick one per question; the reason appears either way.</p>
+    <div id="quizRoot"></div>
+  </section>
+
+  <section id="trust">
+    <h2>How much to trust this</h2>
+    <p>This page was written by an AI from the source file. That makes it quick to produce
+      and easy to refine, and fallible. A model can misread a line, invent a plausible
+      detail, or keep a number that has since changed.</p>
+    <ul>
+      <li>Every code claim carries a <code>file:line</code> reference into
+        <code>scripts/build_devset.py</code> or <code>scripts/wlsp.py</code> at commit
+        <code>b3e6896</code>. Open it and check.</li>
+      <li>The counts (734 rows, 503 records, 599 / 97 / 27 / 11, 648 and 26, 343, 88, 135)
+        come from the committed <code>dev/devset.tsv</code> and the inputs in
+        <code>../tufs</code> as they were on 2026-11-05. Rerunning the script that day
+        produced an identical file. Change wnja, the TUFS map or the WLSP release and the
+        numbers move.</li>
+      <li>Every example word on this page (<span class="ja">便利</span>,
+        <span class="ja">会う</span>, <span class="ja">伯母・叔母</span>,
+        <span class="ja">おととし</span>, <span class="ja">西</span>, <span class="ja">来月</span>,
+        <span class="ja">暑い</span>, <span class="ja">架ける</span>, …) is a real row, and the
+        synset members shown were read from <code>wnja:2.1</code> in <code>.wn_data</code>.
+        The query blocks with a coloured left edge re-run them; they use polars and
+        <code>wn</code>, so the mechanical checker skips them like output.</li>
+      <li>Statements about what never happens in this build (no <code>tufs_lemma</code> or
+        <code>tufs_yomi</code> match; no <code>;</code> in a Japanese TUFS form) are
+        observations about these inputs, not guarantees of the code.</li>
+      <li>The quiz answers follow from the code; where one disagrees with the code, the
+        code wins. Please report it.</li>
+      <li>The surest check is to run the script into a scratch path and <code>diff</code>
+        the result against <code>dev/devset.tsv</code>.</li>
+    </ul>
+  </section>
+
+  <section id="glossary">
+    <h2>Glossary</h2>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Term</th><th>What it means here</th></tr></thead>
+      <tbody>
+        <tr><td><strong>WLSP / 分類語彙表</strong></td><td>NINJAL's thesaurus of Japanese,
+          101,067 records in <code>bunruidb.txt</code>. A record is one headword at one
+          position, hence one sense.</td></tr>
+        <tr><td><strong>record ID / 見出し番号</strong></td><td>the record's own number
+          (<code>084044</code>) and the number shared by a headword's spelling variants
+          (<code>80089</code>). TUFS uses the record ID, unpadded, as its <code>cid</code>.</td></tr>
+        <tr><td><strong>code</strong></td><td>分類番号-段落-小段落-語番号, e.g.
+          <code>2.3520-01-01-02</code>; records in the same 小段落 are close synonyms.</td></tr>
+        <tr><td><strong>見出し本体</strong></td><td>the headword proper, before the reading
+          hint in （）and the usage note in ［］: <span class="ja">時</span> from
+          <span class="ja">時（とき）</span>. The dev set's <code>lemma</code>.</td></tr>
+        <tr><td><strong>polite form</strong></td><td>the ます form TUFS lists verbs under
+          (<span class="ja">会います</span>); WLSP and wnja use the dictionary form
+          (<span class="ja">会う</span>).</td></tr>
+        <tr><td><strong>synset</strong></td><td>a set of synonyms with one meaning, named by
+          its Princeton 3.0 offset: <code>02428924-v</code> "gather in one place", in wnja
+          <code>wnja-02428924-v</code>.</td></tr>
+        <tr><td><strong>sense</strong></td><td>one word in one synset:
+          <code>wnja-00604617-a-12574</code> is <span class="ja">便利</span> as "convenient".
+          The dev set links a WLSP record to a sense, not just a synset.</td></tr>
+        <tr><td><strong>forms</strong></td><td>the strings a wnja word lists besides its
+          lemma, usually its katakana and hiragana readings:
+          <code>['便利', 'ベンリ', 'べんり']</code>.</td></tr>
+        <tr><td><strong>ILI</strong></td><td>Interlingual Index ID (<code>i3356</code>), the
+          language-neutral concept number a synset carries; empty for TUFS-only synsets
+          such as <code>90000500-n</code>.</td></tr>
+        <tr><td><strong>tufs-ja</strong></td><td>the TUFS Japanese wordnet, with one sense
+          per linked TUFS lemma: <code>tufs-ja-会います-02428924-v</code>.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>Explainer for the wnja-bunrigoihyou project, generated from
+      <code>scripts/build_devset.py</code>. Format after Geoffrey Litt's
+      <em>explain-diff</em>: background, intuition, code, quiz.</p>
+    <p class="prov">Explainer v0, 2026-11-05, Claude Fable 5.1 · source
+      <code>scripts/build_devset.py</code> and <code>scripts/wlsp.py</code> at commit
+      <code>b3e6896</code> · data dev/devset.tsv (734 rows), ../tufs tufs-vocab.tsv and
+      tufs-omw-map.tsv, WLSP bunruidb.txt ver 1.0.1, wnja:2.1, tufs-ja:2026.04.06 in
+      .wn_data · regenerate when the code changes.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const QUESTIONS = [
+    {
+      q: "TUFS lists the verb as 会います and WLSP as 会う. Which string ends up in the dev set's lemma column, and where does the other go?",
+      options: [
+        {t:"lemma is the WLSP 見出し本体 会う; the TUFS ます form is kept in the separate polite column", ok:true},
+        {t:"lemma is 会います, because the TUFS row is the source of the concept", ok:false},
+        {t:"Both are joined with a slash in lemma", ok:false},
+        {t:"The script converts 会います to 会う with a conjugation table and drops the polite form", ok:false},
+      ],
+      why:"build_rows writes record.lemma (the WLSP 見出し本体) as lemma and polite_form(entry.lemma) as polite (lines 230–231). No conjugation is done; the polite form is simply kept beside the dictionary form so the TUFS wordnet, whose sense IDs contain it, can still be joined."
+    },
+    {
+      q: "polite_form('入れます(2)') returns what?",
+      options: [
+        {t:"'入れます': the trailing index is stripped and the result ends in ます", ok:true},
+        {t:"'入れます(2)' unchanged, since the index is part of the TUFS lemma", ok:false},
+        {t:"'' because the string does not end in ます", ok:false},
+        {t:"'入れる', the dictionary form", ok:false},
+      ],
+      why:"_INDEX (\\(\\d+\\)$) removes the (2), leaving 入れます, which endswith('ます'), so it is returned. The function never produces a dictionary form."
+    },
+    {
+      q: "A TUFS link has relation hyponym, the synset exists in wnja, and find_sense finds the headword in it (as happens for 暑い). What status does the row get?",
+      options: [
+        {t:"hyponym: the relation is tested first, so the found sense ID is kept in the row but the status is not sense", ok:true},
+        {t:"sense, because a matching sense was found", ok:false},
+        {t:"synset-only, because a hyponym link never has a sense", ok:false},
+        {t:"no-synset: hyponym links skip the synset lookup", ok:false},
+      ],
+      why:"row_status checks relation == 'hyponym' before anything else (line 150). The synset lookup and find_sense still run in build_rows, so wnja_sense is filled for 6 of the 11 hyponym rows, but the status is hyponym."
+    },
+    {
+      q: "WLSP has おととし; the wnja synset 90000500-n has 一昨年 with no readings listed. Why does the row come out synset-only rather than sense?",
+      options: [
+        {t:"find_sense compares exact strings against each word's lemma and forms; 一昨年 lists no kana form, so none of おととし, オトトシ matches", ok:true},
+        {t:"The synset has no ILI, and senses are only matched in synsets with an ILI", ok:false},
+        {t:"The TUFS form おととし is a noun, and find_sense only matches verbs by reading", ok:false},
+        {t:"synset-only is assigned whenever the synset has exactly one member", ok:false},
+      ],
+      why:"find_sense builds forms = {word.lemma(), *word.forms()} and tests cand in forms or hira_to_kata(cand) in forms. 一昨年's forms are ['一昨年'] only, so no candidate string hits. The ILI and the member count play no part."
+    },
+    {
+      q: "Why does the script pad the cid with zeros (cid.zfill(6)) before looking it up in the WLSP table?",
+      options: [
+        {t:"The TUFS cid is the WLSP record ID without leading zeros (84044 vs 084044), and read_wlsp keys records by the padded ID", ok:true},
+        {t:"WLSP record IDs are six-digit codes unrelated to TUFS, and padding happens to make them collide", ok:false},
+        {t:"Padding converts the cid to a 見出し番号", ok:false},
+        {t:"The zfill is only for sorting the output", ok:false},
+      ],
+      why:"TUFS reused the WLSP record ID as its concept ID, as a plain integer string. read_wlsp keeps the file's zero-padded record_id as the key, so build_rows pads before the lookup (line 202). Sorting uses key=int on the unpadded cid instead (line 201)."
+    },
+    {
+      q: "In this build the candidate list has four entries, but only two methods ever appear in the match column. Which two, and in what order are candidates tried?",
+      options: [
+        {t:"wlsp_lemma (603 rows) and wlsp_yomi (2 rows); the order is WLSP lemma, TUFS lemma, WLSP reading, TUFS reading", ok:true},
+        {t:"tufs_lemma and tufs_yomi; TUFS strings are tried before WLSP strings", ok:false},
+        {t:"wlsp_lemma and tufs_lemma; readings are never tried for nouns", ok:false},
+        {t:"wlsp_yomi and tufs_yomi; readings are tried first because wnja is indexed by reading", ok:false},
+      ],
+      why:"candidates (lines 207–212) is wlsp_lemma, tufs_lemma, wlsp_yomi, tufs_yomi, and find_sense stops at the first hit. In dev/devset.tsv match is wlsp_lemma 603 times and wlsp_yomi twice (伯母・叔母, 架ける); the TUFS strings never won, since they equal the WLSP lemma or are ます forms wnja does not list."
+    },
+  ];
+
+  function shuffle(a){
+    for(let i=a.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  const root = document.getElementById('quizRoot');
+  QUESTIONS.forEach((item, qi)=>{
+    const q = document.createElement('div'); q.className='q';
+    const h = document.createElement('p'); h.className='qhead';
+    h.innerHTML = '<span>Q'+(qi+1)+'</span>'+item.q;
+    q.appendChild(h);
+    const ul = document.createElement('ul');
+    shuffle(item.options.slice()).forEach(opt=>{
+      const li=document.createElement('li');
+      const b=document.createElement('button');
+      b.className='opt'; b.type='button'; b.textContent=opt.t;
+      b.addEventListener('click',()=>{
+        if(q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        b.classList.add(opt.ok?'correct':'wrong');
+        ul.querySelectorAll('button').forEach(x=>{
+          x.disabled=true;
+          if(x.textContent===item.options.find(o=>o.ok).t) x.classList.add('correct');
+        });
+      });
+      li.appendChild(b); ul.appendChild(li);
+    });
+    q.appendChild(ul);
+    const why=document.createElement('p'); why.className='why';
+    why.innerHTML='<strong>Why:</strong> '+item.why;
+    q.appendChild(why);
+    root.appendChild(q);
+  });
+})();
+</script>

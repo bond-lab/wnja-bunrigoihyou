@@ -1,0 +1,813 @@
+<title>Sentence Embeddings for WLSP Links</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one reading column; data tables and text blocks scroll inside their own wrappers. */
+  :root{
+    --ground:#f7f6f3; --surface:#ffffff; --ink:#1d2127; --muted:#5d6472;
+    --accent:#4a55a8; --accent-soft:#e7e9f6; --hair:#e3e2dc;
+    --gold:#2e7d4f; --wrong:#b2473f; --warn:#a9711a; --dim:#7a8088;
+    --code-bg:#f0efea;
+    --serif: "Palatino Linotype","Palatino","Book Antiqua",Georgia,"Times New Roman",serif;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans CJK JP",sans-serif;
+    --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#131519; --surface:#1b1e24; --ink:#e8e8e4; --muted:#9aa0ab;
+      --accent:#9ea6ec; --accent-soft:#24284a; --hair:#2b2f37;
+      --gold:#5fbe86; --wrong:#e2786f; --warn:#d7a24e; --dim:#8b919a;
+      --code-bg:#161a20; color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#131519; --surface:#1b1e24; --ink:#e8e8e4; --muted:#9aa0ab;
+    --accent:#9ea6ec; --accent-soft:#24284a; --hair:#2b2f37;
+    --gold:#5fbe86; --wrong:#e2786f; --warn:#d7a24e; --dim:#8b919a;
+    --code-bg:#161a20; color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--serif);line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .wrap{max-width:46rem;margin:0 auto;padding-block:3.5rem 5rem;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+  .eyebrow{font-family:var(--sans);font-size:.72rem;font-weight:600;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
+  h1{font-size:2.1rem;line-height:1.15;margin:0 0 .4rem;text-wrap:balance;font-weight:600}
+  .lede{font-size:1.15rem;color:var(--muted);margin:0 0 1.5rem;text-wrap:balance}
+  .meta{font-family:var(--mono);font-size:.8rem;color:var(--muted);
+    border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);
+    padding:.6rem 0;display:flex;gap:1.2rem;flex-wrap:wrap}
+
+  nav.toc{margin:2rem 0 2.5rem;font-family:var(--sans);font-size:.9rem}
+  nav.toc ol{list-style:none;counter-reset:s;padding:0;margin:0;display:grid;gap:.35rem}
+  nav.toc li{counter-increment:s}
+  nav.toc a{color:var(--ink);text-decoration:none;display:flex;gap:.6rem;
+    padding:.35rem .5rem;border-radius:6px}
+  nav.toc a::before{content:counter(s,decimal-leading-zero);color:var(--accent);
+    font-variant-numeric:tabular-nums;font-weight:600}
+  nav.toc a:hover{background:var(--accent-soft)}
+
+  section{margin:3rem 0}
+  h2{font-size:1.5rem;margin:0 0 .8rem;font-weight:600;padding-bottom:.3rem;
+    border-bottom:2px solid var(--accent-soft);text-wrap:balance}
+  h3{font-size:1.08rem;font-family:var(--sans);font-weight:600;margin:1.6rem 0 .4rem}
+  p{margin:.8rem 0}
+  a{color:var(--accent)}
+  strong{font-weight:600}
+  .ja{font-family:var(--sans)}
+  .en{color:var(--muted)}
+
+  code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);
+    padding:.1em .35em;border-radius:4px}
+  pre{font-family:var(--mono);font-size:.8rem;line-height:1.5;
+    background:var(--code-bg);border:1px solid var(--hair);border-radius:10px;
+    padding:1rem 1.1rem;overflow-x:auto;white-space:pre;margin:1rem 0}
+  pre code{background:none;padding:0;font-size:1em}
+  pre.data{background:var(--surface)}
+  pre.text{white-space:pre-wrap;word-break:break-word;font-family:var(--sans);font-size:.84rem}
+  pre.text b{font-family:var(--mono);color:var(--accent);font-weight:600}
+  .ref{font-family:var(--mono);font-size:.76rem;color:var(--muted);display:block;margin:-.4rem 0 .9rem}
+
+  .chip{font-family:var(--mono);font-size:.74rem;font-weight:600;padding:.12em .5em;
+    border-radius:999px;white-space:nowrap;border:1px solid currentColor}
+  .k-gold{color:var(--gold)} .k-wrong{color:var(--wrong)} .k-dim{color:var(--dim)} .k-warn{color:var(--warn)}
+
+  /* pipeline diagram */
+  .flow{display:grid;grid-template-columns:1fr auto 1fr;gap:.6rem 1rem;align-items:center;
+    margin:1.4rem 0;font-family:var(--sans);font-size:.82rem}
+  .flow .lane{display:flex;flex-direction:column;gap:.5rem;min-width:0}
+  .flow .mid{display:flex;flex-direction:column;align-items:center;gap:.3rem;color:var(--muted);font-weight:700}
+  .node{background:var(--surface);border:1px solid var(--hair);border-radius:8px;
+    padding:.5rem .7rem;box-shadow:0 1px 0 var(--hair);min-width:0}
+  .node b{display:block;color:var(--accent);font-size:.9rem}
+  .node small{color:var(--muted);font-family:var(--mono);font-size:.7rem;display:block;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .node.out{border-color:var(--accent);background:var(--accent-soft)}
+  .node.out b{color:var(--ink)}
+  .down{text-align:center;color:var(--muted);font-weight:700;line-height:1}
+  @media (max-width:520px){.flow{grid-template-columns:1fr}.flow .mid{flex-direction:row}}
+
+  table.toy{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.86rem;font-family:var(--sans)}
+  table.toy th,table.toy td{text-align:left;padding:.5rem .55rem;border-bottom:1px solid var(--hair);vertical-align:top}
+  table.toy th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  table.toy td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  table.toy tr.gold td{background:color-mix(in srgb,var(--gold) 10%,transparent)}
+  table.toy td.top{font-weight:700;color:var(--accent)}
+  .wrap-x{overflow-x:auto;min-width:0}
+
+  .callout{background:var(--accent-soft);border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .callout p{margin:.3rem 0}
+  .caveat{font-family:var(--sans);font-size:.86rem;line-height:1.45;color:var(--ink);
+    background:color-mix(in srgb,var(--warn) 12%,transparent);
+    border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);
+    border-radius:8px;padding:.7rem .9rem;margin:1.2rem 0}
+  .caveat b{color:var(--warn)}
+  .leak{border-color:color-mix(in srgb,var(--wrong) 50%,transparent);
+    background:color-mix(in srgb,var(--wrong) 9%,transparent)}
+  .leak b{color:var(--wrong)}
+
+  /* quiz */
+  .quiz .q{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:1.1rem 1.2rem;margin:1rem 0}
+  .quiz .qhead{font-weight:600;margin:0 0 .7rem;font-family:var(--sans);font-size:1rem}
+  .quiz .qhead span{color:var(--accent);font-family:var(--mono);margin-right:.5rem}
+  .quiz ul{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
+  .quiz button.opt{width:100%;text-align:left;font:inherit;font-family:var(--sans);font-size:.92rem;
+    background:var(--ground);color:var(--ink);cursor:pointer;border:1px solid var(--hair);
+    border-radius:8px;padding:.6rem .8rem;transition:border-color .15s,background .15s}
+  .quiz button.opt:hover{border-color:var(--accent)}
+  .quiz button.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .quiz button.opt.correct{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 14%,transparent)}
+  .quiz button.opt.wrong{border-color:var(--wrong);background:color-mix(in srgb,var(--wrong) 12%,transparent)}
+  .quiz button.opt[disabled]{cursor:default}
+  .quiz .why{font-size:.88rem;color:var(--muted);margin:.7rem 0 0;padding-left:.6rem;border-left:2px solid var(--hair);display:none}
+  .quiz .q.answered .why{display:block}
+
+  footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--hair);font-family:var(--sans);font-size:.82rem;color:var(--muted)}
+  .prov{font-family:var(--mono);font-size:.75rem;line-height:1.55;margin-top:.7rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">wnja-bunrigoihyou · tier 2 · Code explainer</p>
+    <h1>Sentence embeddings for WLSP links</h1>
+    <p class="lede">How <code>features_sent.py</code> turns a wnja synset and a
+      分類語彙表 record into text, embeds both, and writes three cosine columns
+      into the candidate table.</p>
+    <div class="meta">
+      <span>scripts/features_sent.py</span><span>354 lines</span>
+      <span>deps: wn, polars, numpy, sentence-transformers</span>
+      <span>run: uv run scripts/features_sent.py --model intfloat/multilingual-e5-small --query-prefix "query: " --doc-prefix "passage: "</span>
+    </div>
+    <p class="caveat"><b>Generated by an AI.</b> This page was written from the code
+      and can be wrong: a misread line, an invented detail, a stale number. Trust
+      the code, not this page: check anything that matters against
+      <code>scripts/features_sent.py</code>, and run it. Every number here was read
+      from <code>build/candidates.parquet</code> and
+      <code>build/emb/multilingual_e5_small/cache.npz</code> as they stood on
+      2026-11-05 after one CPU run of <code>intfloat/multilingual-e5-small</code>;
+      a later run, or another model, will differ. See
+      <a href="#trust">How much to trust this</a>.</p>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#background">Background: senses, records, embeddings</a></li>
+      <li><a href="#intuition">Intuition: 走る and 手, by hand</a></li>
+      <li><a href="#band">Why the cosines need <code>rel_*</code></a></li>
+      <li><a href="#code">Code: how the script runs</a></li>
+      <li><a href="#cache">The embedding cache</a></li>
+      <li><a href="#quiz">Quiz</a></li>
+      <li><a href="#trust">How much to trust this</a></li>
+      <li><a href="#repro">Appendix: reproduce the examples</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <p>The project links two Japanese sense inventories. The <strong>Japanese
+      WordNet</strong> (wnja 2.1) groups words into <em>synsets</em>, each with a
+      definition and sometimes an example. The <strong>分類語彙表</strong> (WLSP,
+      <em>Word List by Semantic Principles</em>) is a thesaurus: every headword
+      occurrence is a <em>record</em> with a position in a four-level category tree
+      (類 / 部門 / 中項目 / 分類項目) and, below that, a 段落 (paragraph) and a
+      小段落 (sub-paragraph) of near-synonyms. One sense of a headword is a
+      見出し番号; its canonical record is what the code calls <code>db.senses[mid]</code>.</p>
+
+    <p>Two real senses of the verb <span class="ja">走る</span> "run", one from each side:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Side</th><th>Identifier</th><th>What it says</th></tr></thead>
+      <tbody>
+        <tr><td>wnja synset</td><td class="num">wnja-01914947-v<br>ILI i31289</td>
+          <td><span class="ja">走る、駆ける</span>: <span class="ja">ランニングにより補う; 特定の距離を走る</span>
+            <span class="en">(omw-en 1.4: "cover by running; run a certain distance")</span>;
+            example <span class="ja">彼女は、その日、10マイル走った</span></td></tr>
+        <tr><td>WLSP record</td><td class="num">record 070265<br>見出し番号 67501<br>code 2.1522-02-01-01</td>
+          <td>labels <span class="ja">用/関係/作用/走り・飛び・流れなど</span>;
+            小段落 neighbours <span class="ja">走らす・走らせる、走行する</span>;
+            段落 neighbours add <span class="ja">独走する、伴走する、助走する、逆走する、小走りする …</span> (23 in all)</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p><code>candidates.py</code> has already paired every wnja sense with the WLSP
+      senses whose written form (or reading) matches its lemma, and scored the overlap
+      of their neighbourhoods. The table this script reads and rewrites,
+      <code>build/candidates.parquet</code>, holds <strong>168,540</strong> candidate
+      pairs for 96,223 wnja senses (33,159 synsets) and 47,235 WLSP senses. The
+      structural features cannot tell apart two WLSP records of the same word whose
+      neighbourhoods both miss the wordnet's vocabulary; 60,426 pairs are the only
+      candidate of their sense and carry no contrast at all. Tier 2 adds a second
+      opinion from <strong>meaning</strong>: does the text of the synset read like the
+      text of the record?</p>
+
+    <h3>Sentence embeddings, in two sentences</h3>
+    <p>A sentence-embedding model maps a string to a vector of fixed length
+      (384 floats for <code>multilingual-e5-small</code>) so that strings with similar
+      meaning point in similar directions. With <code>normalize_embeddings=True</code>
+      every vector has length 1, so the dot product of two vectors is their
+      <strong>cosine similarity</strong>: 1.0 for identical direction, lower as they
+      diverge. The model is multilingual, so a Japanese definition can be compared with
+      an English category name in one space.</p>
+    <p>The e5 family expects a role prefix on each string: <code>query: </code> on the
+      thing being searched for and <code>passage: </code> on the things searched. The
+      script passes them as <code>--query-prefix</code> (synset side) and
+      <code>--doc-prefix</code> (WLSP side); other models, such as
+      <code>BAAI/bge-m3</code>, take none.</p>
+
+    <h3>The English 中項目 names</h3>
+    <p>The WLSP labels are Japanese; to give the multilingual model an anchor, the
+      category text appends the English name of the record's 中項目 from the TUFS file
+      <code>../tufs/tufsdata/bunrui_names.tsv</code> (95 codes; all the 中項目 of the
+      candidate senses are covered). The key is <code>rec.middle_key</code>, the first
+      four characters of the 分類番号 (<code>wlsp.py:87</code>), so
+      <code>2.1522</code> looks up <code>2.15</code>:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Code</th><th>en</th><th>ja</th><th>Records whose cat text gets it</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1.10</td><td>Matters</td><td class="ja">事柄</td><td>the first line of the file</td></tr>
+        <tr><td class="num">1.20</td><td>Human</td><td class="ja">人間</td><td><span class="ja">人</span> 1.2000-01-01-02, <span class="ja">自分</span> 1.2020-02-01-01</td></tr>
+        <tr><td class="num">1.56</td><td>Body</td><td class="ja">身体</td><td><span class="ja">手</span> 1.5603-02-01-01, the gold record below</td></tr>
+        <tr><td class="num">2.15</td><td>Action</td><td class="ja">作用</td><td><span class="ja">走る</span> 2.1522, <span class="ja">飛び出る</span> 2.1531</td></tr>
+        <tr><td class="num">2.35</td><td>Interaction</td><td class="ja">交わり</td><td><span class="ja">あう（会・遭）</span> 2.3520-01-01-01</td></tr>
+        <tr><td class="num">2.38</td><td>Business</td><td class="ja">事業</td><td><span class="ja">染め上げる</span> 2.3841</td></tr>
+        <tr><td class="num">3.30</td><td>Mind</td><td class="ja">心</td><td><span class="ja">楽しい</span> 3.3011-03-01-01, <span class="ja">好き</span> 3.3020-01-01-01</td></tr>
+        <tr><td class="num">4.31</td><td>Judgement</td><td class="ja">判断</td><td>the first passages in the cache: <span class="ja">他 判断 予期 (Judgement)</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p><code>read_category_names()</code> (<code>features_sent.py:64-76</code>) is a
+      plain <code>csv.DictReader</code> over the tab-separated file, keeping the
+      <code>Code</code> and <code>en</code> columns. If the file is absent the mapping is
+      empty and the cat text is the bare labels.</p>
+
+    <p class="caveat leak"><b>The leak to avoid.</b> <code>--tufs-gloss
+      ../tufs/tufs-vocab.tsv</code> (<code>features_sent.py:79-108</code>, applied at
+      <code>:158-160</code>) appends an English gloss to the <code>sub</code> and
+      <code>ctx</code> texts of the 847 WLSP records that are TUFS concepts, for example
+      <span class="ja">手: お手手、上肢 (arm, hand)</span> and
+      <span class="ja">走る: 走らす・走らせる、走行する (run)</span>. Those 847 records
+      <em>are</em> the dev set (TUFS concept ID = WLSP record ID), so the gold rows get
+      an English hint that no other row gets, and any evaluation with it on is
+      meaningless. The script logs a warning (<code>:335-339</code>) but does not stop
+      you. Use it for the final mapping only, never for <code>evaluate.py</code>. The
+      run described on this page did not use it.</p>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <p>Each side becomes text, each text becomes a unit vector, and three dot products
+      become three columns. The three WLSP texts grow in specificity: the category
+      alone, the headword with its closest synonyms, then everything.</p>
+
+    <div class="wrap-x">
+    <div class="flow">
+      <div class="lane">
+        <div class="node"><b>wnja synset</b><small>wnja-01914947-v</small></div>
+        <div class="down">↓ synset_text()</div>
+        <div class="node"><b>one query text</b><small>query: 走る、駆ける: ランニングにより補う; …</small></div>
+      </div>
+      <div class="mid"><span>e5</span><span>→</span></div>
+      <div class="lane">
+        <div class="node out"><b>sent_multilingual_e5_small_cat</b><small>cosine with the cat text</small></div>
+        <div class="node out"><b>sent_multilingual_e5_small_sub</b><small>cosine with the sub text</small></div>
+        <div class="node out"><b>sent_multilingual_e5_small_ctx</b><small>cosine with the ctx text</small></div>
+      </div>
+      <div class="lane">
+        <div class="node"><b>WLSP record</b><small>070265 · 2.1522-02-01-01</small></div>
+        <div class="down">↓ wlsp_texts()</div>
+        <div class="node"><b>three passage texts</b><small>cat · sub · ctx</small></div>
+      </div>
+      <div class="mid"><span>e5</span><span>→</span></div>
+      <div class="lane"><div class="node"><b>three unit vectors</b><small>384 floats each, cached by text</small></div></div>
+    </div>
+    </div>
+
+    <h3>The texts for <span class="ja">走る</span></h3>
+    <p>Built with the script's own functions and no model (the snippet is in the
+      <a href="#repro">appendix</a>). The synset side, from <code>synset_text()</code>
+      (<code>features_sent.py:111-129</code>): members joined with <span class="ja">、</span>,
+      then the definitions, then up to two examples after <span class="ja">例:</span>.
+      With <code>--en-gloss</code> the omw-en definition would follow in parentheses.</p>
+    <pre class="data text"><b>synset</b>  走る、駆ける: ランニングにより補う; 特定の距離を走る 例: 彼女は、その日、10マイル走った
+<b>+en</b>      走る、駆ける: ランニングにより補う; 特定の距離を走る 例: 彼女は、その日、10マイル走った (cover by running; run a certain distance)</pre>
+    <p>The WLSP side for the gold record 070265, from <code>wlsp_texts()</code>
+      (<code>features_sent.py:132-161</code>). The slashes in the labels become spaces,
+      the English 中項目 name is appended, and the 段落 list is capped at
+      <code>para_limit=20</code>:</p>
+    <pre class="data text"><b>cat</b>  用 関係 作用 走り・飛び・流れなど (Action)
+<b>sub</b>  走る: 走らす・走らせる、走行する
+<b>ctx</b>  用 関係 作用 走り・飛び・流れなど (Action): 走る; 走らす・走らせる、走行する; 走らす・走らせる、走行する、独走する、伴走する、助走する、逆走する、小走りする、ちょこちょこする、走り出す、走り回る、走り込む、走り通す、走り抜く、走り抜ける、ひた走りに走る、力走する、快走する、好走する、疾駆する、疾走する</pre>
+    <p>Note that <code>ctx</code> lists the 小段落 neighbours twice: once on their own
+      and again at the head of the 段落 list, because a 段落 contains its 小段落 and
+      <code>db.neighbours()</code> (<code>wlsp.py:291-307</code>) excludes only the
+      record itself. <code>ctx</code> is a sibling of <code>Wlsp.context_text()</code>
+      (<code>wlsp.py:309-321</code>), not a call to it: the same parts, but with the
+      English name and without the <span class="ja">同義:</span> / <span class="ja">関連:</span>
+      markers.</p>
+
+    <p>This sense has three candidates in the table: the gold record and two
+      <strong>decoys</strong> that <code>candidates.py</code> planted for the dev set
+      (other verbs of the same 類 in another 分類項目). Their <code>sub</code> texts:</p>
+    <pre class="data text"><b>071272</b>  飛び出る: 走り出る、飛び出す、躍り出る            (2.1531-03-05-02, 用 関係 作用 出・出し (Action))
+<b>088451</b>  染め上げる: 染める、染まる、染む、染め上がる、漂白する、染み抜きする   (2.3841-01-01-04, 用 活動 事業 染色・洗濯など (Business))</pre>
+
+    <p>And the three cosines each candidate received, read from the parquet (the
+      highest in each column in bold):</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Candidate</th><th>Labels</th><th>Gold</th><th>_cat</th><th>_sub</th><th>_ctx</th><th>chive_sub_max</th></tr></thead>
+      <tbody>
+        <tr class="gold"><td class="num">070265 <span class="ja">走る</span></td><td class="ja">用/関係/作用/走り・飛び・流れなど</td>
+          <td><span class="chip k-gold">exact</span></td><td class="num top">0.856</td><td class="num top">0.877</td><td class="num top">0.852</td><td class="num">0.803</td></tr>
+        <tr><td class="num">071272 <span class="ja">飛び出る</span></td><td class="ja">用/関係/作用/出・出し</td>
+          <td><span class="chip k-wrong">decoy</span></td><td class="num">0.826</td><td class="num">0.858</td><td class="num">0.832</td><td class="num">0.557</td></tr>
+        <tr><td class="num">088451 <span class="ja">染め上げる</span></td><td class="ja">用/活動/事業/染色・洗濯など</td>
+          <td><span class="chip k-wrong">decoy</span></td><td class="num">0.821</td><td class="num">0.800</td><td class="num">0.818</td><td class="num">0.220</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The ranking is right in all three columns, but look at the scale: the gold
+      record beats a verb about dyeing cloth by 0.03. The chiVe word-vector feature
+      from tier 1 separates the same pair by 0.58.</p>
+
+    <h3>A harder word: <span class="ja">手</span></h3>
+    <p>The noun <span class="ja">手</span> has 13 candidates for the synset
+      <code>wnja-02440250-n</code> (ILI i48471, <span class="en">"terminal part of the
+      forelimb in certain vertebrates (e.g. apes or kangaroos)"</span>), whose Japanese
+      text is dominated by a long example about a kangaroo. Eleven of the candidates are
+      genuinely WLSP senses of <span class="ja">手</span>: the body part, a means, a way
+      of doing, a move in sport, handwriting, a counter. The gold is the body part, 1.5603 (Body). Six of the
+      thirteen rows:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Code</th><th>Labels</th><th>Gold</th><th>_cat</th><th>_sub</th><th>_ctx</th></tr></thead>
+      <tbody>
+        <tr class="gold"><td class="num">1.5603-02-01-01</td><td class="ja">体/自然/身体/手足・指</td><td><span class="chip k-gold">exact</span></td>
+          <td class="num top">0.852</td><td class="num">0.848</td><td class="num">0.853</td></tr>
+        <tr><td class="num">1.1113-09-01-03</td><td class="ja">体/関係/類/理由・目的・証拠 <span class="en">(means)</span></td><td><span class="chip k-dim">other</span></td>
+          <td class="num">0.826</td><td class="num">0.838</td><td class="num top">0.855</td></tr>
+        <tr><td class="num">1.3430-06-03-05</td><td class="ja">体/活動/行為/行為・活動 <span class="en">(way of doing)</span></td><td><span class="chip k-dim">other</span></td>
+          <td class="num">0.809</td><td class="num">0.836</td><td class="num">0.853</td></tr>
+        <tr><td class="num">1.1962-50-01-02</td><td class="ja">体/関係/量/助数接辞 <span class="en">(counter)</span></td><td><span class="chip k-dim">other</span></td>
+          <td class="num">0.813</td><td class="num top">0.851</td><td class="num">0.839</td></tr>
+        <tr><td class="num">1.3151-12-01-05</td><td class="ja">体/活動/言語/書き <span class="en">(handwriting)</span></td><td><span class="chip k-dim">other</span></td>
+          <td class="num">0.818</td><td class="num">0.828</td><td class="num">0.834</td></tr>
+        <tr><td class="num">1.3510-06-01-01</td><td class="ja">体/活動/交わり/集会 <span class="ja">茶話会</span></td><td><span class="chip k-wrong">decoy</span></td>
+          <td class="num">0.816</td><td class="num">0.784</td><td class="num">0.810</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The category text <span class="ja">体 自然 身体 手足・指 (Body)</span> wins
+      clearly for the gold: "Body" against a definition about forelimbs. The
+      <code>sub</code> text <span class="ja">手: お手手、上肢</span> is short and loses
+      to the counter sense; <code>ctx</code> for this record is tiny (the 段落 has only two
+      other members) and loses by 0.003 to "means". The three variants fail in different
+      places, which is why all three are kept as separate features for the scorer to
+      weigh. Across the 305 ambiguous dev senses the gold record has the highest
+      <code>_cat</code> in 200, the highest <code>_ctx</code> in 177 and the highest
+      <code>_sub</code> in 153 (tier 1's <code>chive_sub_max</code>: 193).</p>
+  </section>
+
+  <section id="band">
+    <h2>Why the cosines need <code>rel_*</code></h2>
+    <p>Every value this script writes lives in a narrow band. Over all 168,540 rows the
+      medians are 0.852 (<code>_cat</code>), 0.871 (<code>_sub</code>) and 0.874
+      (<code>_ctx</code>); 90% of rows fall between about 0.81 and 0.91. Gold rows
+      average only 0.02 to 0.035 above labelled negatives:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Rows (dev-labelled)</th><th>n</th><th>_cat</th><th>_sub</th><th>_ctx</th><th>chive_sub_max</th></tr></thead>
+      <tbody>
+        <tr class="gold"><td>gold = 1</td><td class="num">587</td><td class="num">0.858</td><td class="num">0.877</td><td class="num">0.879</td><td class="num">0.691</td></tr>
+        <tr><td>gold = 0 (other senses of the word, decoys)</td><td class="num">1,861</td><td class="num">0.839</td><td class="num">0.842</td><td class="num">0.848</td><td class="num">0.285</td></tr>
+        <tr><td colspan="2">all rows, 5th to 95th percentile</td><td class="num">0.812 to 0.888</td><td class="num">0.819 to 0.908</td><td class="num">0.823 to 0.914</td><td></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>This is normal for e5-small: a model trained for retrieval places all
+      Japanese dictionary-like text in one small cone, and absolute cosine says more
+      about the text style than about the pair. Within one wnja sense, the spread
+      between its best and worst candidate is small too: median 0.015 to 0.016 over
+      the 36,375 senses with two or more candidates. A tree model splitting on the raw
+      column sees mostly noise, and the README records the result: adding the raw e5
+      columns to core + chiVe moved lenient top-1 from 0.767 to 0.754, inside the noise
+      of 303 senses.</p>
+    <p>The fix lives in <code>score.py</code>, not here. <code>add_derived()</code>
+      subtracts, for every <code>chive_*</code> and <code>sent_*</code> column, the
+      maximum over the same <code>sense_id</code>, giving <code>rel_sent_…</code>
+      columns that are 0 for the best candidate of a sense and negative for the rest.
+      For <span class="ja">走る</span>:</p>
+    <pre class="data">code             gold_rel  rel_sent_…_cat  rel_sent_…_sub  rel_sent_…_ctx
+2.1522-02-01-01  exact      0.000           0.000           0.000
+2.1531-03-05-02  decoy     -0.030          -0.019          -0.020
+2.3841-01-01-04  decoy     -0.035          -0.076          -0.034</pre>
+    <p>Expressed that way, the e5 category similarity became the scorer's most used
+      feature and many-to-many precision/recall at 0.5 rose from 0.83/0.86 to
+      0.87/0.89 (README, 2026-11-05). The script itself does not know about any of
+      this: it writes raw cosines, and that is the right division of labour, since the
+      relative view depends on which other candidates a sense has.</p>
+  </section>
+
+  <section id="code">
+    <h2>Code: how the script runs</h2>
+    <p>In execution order. Line numbers refer to <code>scripts/features_sent.py</code>
+      at commit <code>b3e6896</code>.</p>
+
+    <h3>1. Arguments and the model tag</h3>
+    <span class="ref">features_sent.py:291-315, 52-61</span>
+    <p><code>main()</code> takes the candidate table as an optional positional argument
+      (default <code>build/candidates.parquet</code>) and options for the model,
+      device, batch size, token limit, the two prefixes, the gloss sources and the
+      cache directory. The default model is <code>BAAI/bge-m3</code>
+      (<code>:295</code>), not the e5 model that has actually been run so far.</p>
+    <pre><code>tag = model_tag(args.model)                                   # :315
+
+def model_tag(model: str) -> str:                             # :52
+    return re.sub(r"[^a-z0-9]+", "_", model.rstrip("/").split("/")[-1].lower()).strip("_")</code></pre>
+    <p>The tag is the last path component, lower-cased, with runs of anything but
+      <code>a-z0-9</code> collapsed to <code>_</code>. It names both the columns and the
+      cache folder, so models coexist in one table:</p>
+    <pre class="data">BAAI/bge-m3                     -> bge_m3
+intfloat/multilingual-e5-small  -> multilingual_e5_small
+Qwen/Qwen3-Embedding-0.6B       -> qwen3_embedding_0_6b
+/models/bge-m3/                 -> bge_m3     (trailing slash stripped first)</pre>
+
+    <h3>2. Load the wordnet, the WLSP database and the table</h3>
+    <span class="ref">features_sent.py:316-319</span>
+    <pre><code>wn.config.data_directory = args.wn_data.resolve()   # .wn_data/
+ja = wn.Wordnet(lexicon=args.lexicon)               # wnja:2.1
+db = Wlsp.load(args.wlsp)                           # data/WLSP/bunruidb.txt
+df = pl.read_parquet(args.candidates)</code></pre>
+    <p><code>Wlsp.load()</code> (<code>wlsp.py:207</code>) reads the Shift_JIS CSV and
+      indexes it by 見出し番号 and by group (<code>subpara</code>, <code>para</code>,
+      <code>item</code>, <code>middle</code>); <code>db.neighbours()</code> later walks
+      those groups.</p>
+
+    <h3>3. Gloss sources</h3>
+    <span class="ref">features_sent.py:321-339</span>
+    <p><code>texts_for</code> is a small bag of optional extras: the English 中項目
+      names (always, if the TSV exists), the TUFS glosses (only with
+      <code>--tufs-gloss</code>, see the warning above), and with
+      <code>--en-gloss</code> an English definition per synset, found by following the
+      wnja synset's ILI into <code>omw-en:1.4</code>:</p>
+    <pre><code>for sid in df["synset_id"].unique():                 # :328
+    ss = ja.synset(sid)
+    if ss.ili:
+        for es in en.synsets(ili=ss.ili):
+            en_gloss[sid] = es.definition() or ""</code></pre>
+    <p>If several omw-en synsets share an ILI the last one wins; in practice an ILI
+      maps to one synset. For <code>wnja-01914947-v</code> this yields
+      <span class="en">"cover by running; run a certain distance"</span>.</p>
+
+    <h3>4. The embedder and its cache</h3>
+    <span class="ref">features_sent.py:164-194, 341-344</span>
+    <pre><code>from sentence_transformers import SentenceTransformer    # :184
+
+self.model = SentenceTransformer(model, device=device, trust_remote_code=True)
+self.model.max_seq_length = max_length                    # 256
+self.cache_path = cache_dir / "cache.npz"                 # build/emb/&lt;tag&gt;/cache.npz
+if self.cache_path.exists():
+    z = np.load(self.cache_path, allow_pickle=False)
+    self.cache = dict(zip(z["texts"].tolist(), z["vectors"], strict=True))</code></pre>
+    <p>The import is inside <code>__init__</code> so that the module can be imported
+      (for its text functions, as this page did) without torch installed. The cache is
+      a dict from text to vector, loaded whole; <code>allow_pickle=False</code> means the
+      texts are stored as a fixed-width unicode array, not Python objects.
+      <code>--device</code> is passed straight through: <code>mps</code> on a Mac,
+      <code>cuda</code>, or <code>cpu</code>; <code>None</code> lets
+      sentence-transformers pick.</p>
+
+    <h3>5. Encoding with de-duplication</h3>
+    <span class="ref">features_sent.py:196-219</span>
+    <pre><code>keyed = [prefix + t for t in texts]                               # :206
+todo = sorted({k for k in keyed if k not in self.cache})          # :207
+if todo:
+    vecs = self.model.encode(todo, batch_size=self.batch_size,
+                             normalize_embeddings=True, ...).astype(np.float32)
+    self.cache.update(zip(todo, vecs, strict=True))
+return np.vstack([self.cache[k] for k in keyed])                  # :219</code></pre>
+    <p>Three things happen here. The prefix becomes part of the cache key, so
+      <code>query: 走る…</code> and <code>passage: 走る…</code> are different entries
+      and a run with other prefixes cannot pick up stale vectors. Duplicate texts are
+      embedded once: the <code>cat</code> text is shared by every record in a 分類項目,
+      so 47,235 records produce only 889 distinct <code>cat</code> strings. And the
+      return keeps the caller's order and length, duplicates included, so the caller can
+      index it positionally.</p>
+
+    <h3>6. Synset texts and WLSP texts</h3>
+    <span class="ref">features_sent.py:255-277</span>
+    <pre><code>synset_ids = df["synset_id"].unique().sort().to_list()            # :255
+if max_texts:
+    synset_ids = synset_ids[:max_texts]                           # smoke test
+s_texts = [synset_text(ja.synset(sid), en_gloss.get(sid, "")) for sid in synset_ids]
+s_vec = embedder.encode(s_texts, prefixes[0])                     # query prefix
+
+sub = df.filter(pl.col("synset_id").is_in(synset_ids))            # :263
+mids = sub["midashi_no"].unique().sort().to_list()
+for mid in mids:
+    texts = wlsp_texts(db.senses[mid], db, texts_for.get("cat_names", {}),
+                       texts_for.get("glosses", {}).get(db.senses[mid].record_id, ""))
+    for v in VARIANTS:
+        per_variant[v].append(texts[v])
+w_vec = {v: embedder.encode(per_variant[v], prefixes[1]) for v in VARIANTS}   # :275
+embedder.save()                                                   # :277</code></pre>
+    <p>Synsets are embedded once each (33,159 texts), not once per sense: two senses of
+      one synset share a vector. Only the WLSP senses that appear with the chosen
+      synsets are rendered, which is what makes <code>--max-texts 500</code> a quick
+      smoke test. <code>VARIANTS = ("cat", "sub", "ctx")</code> (<code>:49</code>) fixes
+      the order everywhere. The cache is saved right after encoding, before the cosines,
+      so a crash later still keeps the expensive part.</p>
+
+    <h3>7. Three dot products per row</h3>
+    <span class="ref">features_sent.py:279-288</span>
+    <pre><code>si = np.array([s_index.get(s, -1) for s in df["synset_id"]])
+wi = np.array([w_index.get(m, -1) for m in df["midashi_no"]])
+ok = (si >= 0) &amp; (wi >= 0)
+for v in VARIANTS:
+    vals = np.full(len(df), np.nan, dtype=np.float32)
+    vals[ok] = np.einsum("ij,ij->i", s_vec[si[ok]], w_vec[v][wi[ok]])      # :285
+    cols.append(pl.Series(f"sent_{tag}_{v}", vals, dtype=pl.Float32).fill_nan(None))
+df = df.drop([c for c in df.columns if c.startswith(f"sent_{tag}_")])      # :287
+return df.with_columns(cols)</code></pre>
+    <p>Each row of the table looks up its synset vector and its WLSP vector by
+      position; <code>einsum("ij,ij->i")</code> is the dot product of matching rows,
+      which on unit vectors is the cosine. Rows outside the subset (a smoke test) get
+      NaN, turned into a proper null by <code>fill_nan(None)</code>. Any existing
+      columns for this tag are dropped first, so re-running a model replaces its
+      columns rather than failing on a duplicate name.</p>
+
+    <h3>8. Write back and report</h3>
+    <span class="ref">features_sent.py:348-350</span>
+    <pre><code>df.write_parquet(args.candidates)
+done = int(df[f"sent_{tag}_ctx"].is_not_null().sum())
+logger.info("wrote %s: sent_%s_* set on %d of %d rows", args.candidates, tag, done, len(df))</code></pre>
+    <p>The table is overwritten in place; the other tiers' columns
+      (<code>ov_*</code>, <code>chive_*</code>, <code>gold</code>, …) ride along
+      untouched. In the current table all 168,540 rows have the e5 columns set
+      (no nulls).</p>
+  </section>
+
+  <section id="cache">
+    <h2>The embedding cache</h2>
+    <p><code>build/emb/multilingual_e5_small/cache.npz</code> after the one CPU run:
+      127,670 texts with 384-dimensional float32 vectors, 392 MB on disk. The keys
+      carry their prefixes:</p>
+    <pre class="data">texts    127670  (33157 "query: …" + 94513 "passage: …")
+vectors  (127670, 384) float32, every row of length 1.0
+
+query:   走る、駆ける: ランニングにより補う; 特定の距離を走る 例: 彼女は、その日、10マイル走った
+passage: 用 関係 作用 走り・飛び・流れなど (Action)
+passage: 走る: 走らす・走らせる、走行する
+passage: 体 自然 身体 手足・指 (Body)</pre>
+    <p>The arithmetic: 33,159 synsets collapse to 33,157 query texts (two pairs of
+      synsets render identically: <span class="ja">教諭: 教師の地位</span> and
+      <span class="ja">推敲: 文章や詩について…</span> each occur twice), and the 47,235 WLSP senses give 889 + 46,684 +
+      46,940 = 94,513 distinct passage texts. Re-running the same model with the same
+      prefixes embeds nothing new and finishes in the time it takes to load the file
+      and take 505,620 dot products. A different model, or <code>--en-gloss</code>
+      (which changes every synset text), starts its own folder or its own entries.</p>
+    <p>Planned next: <code>BAAI/bge-m3</code> and a Qwen3-Embedding model on a Mac
+      with <code>--device mps</code>, each adding its own
+      <code>sent_bge_m3_*</code> / <code>sent_qwen3_embedding_…_*</code> columns beside
+      the e5 ones. No numbers for those exist yet.</p>
+  </section>
+
+  <section id="quiz" class="quiz">
+    <h2>Quiz</h2>
+    <p>Six questions on the substance. Pick one per question; the reason appears
+      either way.</p>
+    <div id="quizRoot"></div>
+  </section>
+
+  <section id="trust">
+    <h2>How much to trust this</h2>
+    <p>This page was written by an AI from the source file. That makes it fast to
+      produce and easy to refine, and also fallible: a model can misread a line, invent
+      a plausible detail, or keep a number that has since changed.</p>
+    <p>So treat the code as the source of truth and this page as a guide to it:</p>
+    <ul>
+      <li>Every code claim carries a <code>file:line</code> reference into
+        <code>scripts/features_sent.py</code> or <code>scripts/wlsp.py</code> at commit
+        <code>b3e6896</code>; open it and check. The mechanical checker
+        (<code>explainer_check.py</code>) was run on this page.</li>
+      <li>The texts for <span class="ja">走る</span> and <span class="ja">手</span> were
+        produced by importing <code>synset_text()</code> and <code>wlsp_texts()</code>
+        from the script and calling them on the real data (wnja 2.1, WLSP 1.0.1,
+        <code>bunrui_names.tsv</code>); no model was loaded for this page.</li>
+      <li>The cosines, means, percentiles and counts were read from
+        <code>build/candidates.parquet</code> and the cache file as of 2026-11-05 with the
+        snippets in the <a href="#repro">appendix</a>. They describe one run of
+        <code>multilingual-e5-small</code> on CPU. Another model, <code>--en-gloss</code>,
+        or a rebuilt candidate table will change every number.</li>
+      <li>The evaluation figures (0.767 to 0.754 top-1, 0.83/0.86 to 0.87/0.89 P/R) are
+        copied from the README's table and <code>dev/eval.md</code>, not recomputed.</li>
+      <li>The surest check is to run the script with <code>--max-texts 50</code> and
+        compare the cached texts with the ones shown here.</li>
+      <li>The quiz answers are derived from the code; where one disagrees with the
+        code, the code wins. Please report it.</li>
+    </ul>
+  </section>
+
+  <section id="repro">
+    <h2>Appendix: reproduce the examples</h2>
+    <p>From the repository root, with the project's virtual environment. The texts, no
+      model needed:</p>
+    <pre class="data">import sys; sys.path.insert(0, "scripts")
+from pathlib import Path
+import wn
+from wlsp import Wlsp
+from features_sent import read_category_names, synset_text, wlsp_texts
+
+wn.config.data_directory = Path(".wn_data").resolve()
+ja = wn.Wordnet(lexicon="wnja:2.1")
+db = Wlsp.load(Path("data/WLSP/bunruidb.txt"))
+names = read_category_names(Path("../tufs/tufsdata/bunrui_names.tsv"))
+
+print(synset_text(ja.synset("wnja-01914947-v")))
+print(wlsp_texts(db.senses["67501"], db, names))     # 見出し番号 of record 070265</pre>
+    <p>The cosines for one sense, and the within-sense relative values that
+      <code>score.py</code> derives:</p>
+    <pre class="data">import polars as pl
+df = pl.read_parquet("build/candidates.parquet")
+T = "sent_multilingual_e5_small_"
+rows = df.filter(pl.col("sense_id") == "wnja-01914947-v-5769")
+print(rows.select("record_id", "code", "gold_rel", T + "cat", T + "sub", T + "ctx"))
+print(rows.with_columns((pl.col(T + v) - pl.col(T + v).max()).alias("rel_" + v)
+                        for v in ("cat", "sub", "ctx")).select("code", "rel_cat", "rel_sub", "rel_ctx"))</pre>
+    <p>The band and the gold-versus-rest means:</p>
+    <pre class="data">print(df.select(pl.col(T + "cat"), pl.col(T + "sub"), pl.col(T + "ctx")).describe())
+print(df.filter(pl.col("gold").is_not_null()).group_by("gold")
+        .agg(pl.col(T + "cat").mean(), pl.col(T + "sub").mean(), pl.col(T + "ctx").mean(), pl.len()))</pre>
+    <p>The cache:</p>
+    <pre class="data">import numpy as np
+z = np.load("build/emb/multilingual_e5_small/cache.npz", allow_pickle=False)
+texts = z["texts"].tolist()
+print(len(texts), z["vectors"].shape, sum(t.startswith("query: ") for t in texts))</pre>
+  </section>
+
+  <section id="glossary">
+    <h2>Glossary</h2>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Term</th><th>What it means here</th></tr></thead>
+      <tbody>
+        <tr><td><strong>synset</strong></td><td>a wnja concept with members, a definition
+          and examples: <code>wnja-01914947-v</code> <span class="ja">走る、駆ける</span>.
+          The script embeds one text per synset.</td></tr>
+        <tr><td><strong>sense</strong></td><td>one word in one synset
+          (<code>wnja-01914947-v-5769</code>); the unit the candidate table and the
+          <code>rel_*</code> features are grouped by.</td></tr>
+        <tr><td><strong>record / 見出し番号</strong></td><td>a WLSP line (record 070265) and
+          the sense it belongs to (見出し番号 67501). <code>db.senses</code> maps the second
+          to the canonical first.</td></tr>
+        <tr><td><strong>類 / 部門 / 中項目 / 分類項目</strong></td><td>the four label levels,
+          <span class="ja">用/関係/作用/走り・飛び・流れなど</span>; the 中項目 code
+          (<code>2.15</code>) is what gets an English name (Action).</td></tr>
+        <tr><td><strong>段落 / 小段落</strong></td><td>paragraph and sub-paragraph inside a
+          分類項目; 小段落 members are close synonyms
+          (<span class="ja">走らす・走らせる、走行する</span>), 段落 members related
+          (<span class="ja">独走する、疾走する …</span>).</td></tr>
+        <tr><td><strong>cat / sub / ctx</strong></td><td>the three WLSP texts: category path
+          with English name; headword with 小段落 neighbours; path, headword, 小段落 and up
+          to 20 段落 neighbours.</td></tr>
+        <tr><td><strong>cosine similarity</strong></td><td>the dot product of two unit
+          vectors; here between 0.71 and 0.95, mostly 0.81 to 0.91.</td></tr>
+        <tr><td><strong>tag</strong></td><td><code>model_tag()</code> of the model name:
+          <code>multilingual_e5_small</code>. Names the columns and the cache folder.</td></tr>
+        <tr><td><strong>decoy</strong></td><td>a wrong candidate added by
+          <code>candidates.py</code> for dev senses (<code>gold_rel = decoy</code>): a WLSP
+          sense of another word in the same 類, such as <span class="ja">染め上げる</span>
+          for <span class="ja">走る</span>.</td></tr>
+        <tr><td><strong>rel_*</strong></td><td>a feature minus its maximum over the sense,
+          computed in <code>score.py</code>; what turns the narrow cosine band into a
+          usable signal.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>Explainer for <code>scripts/features_sent.py</code> in wnja-bunrigoihyou.
+      Format after Geoffrey Litt's <em>explain-diff</em>: background, intuition, code,
+      quiz.</p>
+    <p class="prov">Explainer v0, generated 2026-11-05 by Claude Fable 5.1 · source
+      <code>scripts/features_sent.py</code> and <code>scripts/wlsp.py</code> at commit
+      <code>b3e6896</code> (2026-11-05) · data wnja 2.1, omw-en 1.4, WLSP 1.0.1,
+      <code>bunrui_names.tsv</code>, <code>build/candidates.parquet</code> and
+      <code>build/emb/multilingual_e5_small/cache.npz</code> of 2026-11-05 ·
+      regenerate when the code changes.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const QUESTIONS = [
+    {
+      q: "The raw sent_* cosines were barely used by the scorer. What does the pipeline do about it, and where?",
+      options: [
+        {t:"score.py subtracts each column's maximum within the same wnja sense, so the best candidate scores 0 and the rest negative", ok:true},
+        {t:"features_sent.py rescales each column to 0 to 1 before writing the parquet", ok:false},
+        {t:"The scorer drops the sub and ctx columns and keeps only cat", ok:false},
+        {t:"candidates.py adds decoy rows so the cosines spread out", ok:false},
+      ],
+      why:"features_sent.py writes raw cosines (median 0.85 to 0.87, within-sense spread about 0.015). add_derived() in score.py builds rel_* columns as the value minus its maximum over sense_id; the relative e5 category similarity then became the most used feature."
+    },
+    {
+      q: "Two sentence-embedding models are run on the same candidates.parquet. Why do their columns not collide?",
+      options: [
+        {t:"The column names and the cache folder include model_tag(model), the last path component lower-cased with non-alphanumerics as underscores", ok:true},
+        {t:"The script writes a separate parquet file per model next to candidates.parquet", ok:false},
+        {t:"The second run overwrites the first; only one model's columns can exist", ok:false},
+        {t:"Columns are numbered sent_1_cat, sent_2_cat in the order the models were run", ok:false},
+      ],
+      why:"model_tag('intfloat/multilingual-e5-small') is multilingual_e5_small, so the columns are sent_multilingual_e5_small_cat/_sub/_ctx and the cache is build/emb/multilingual_e5_small/. bge-m3 would add sent_bge_m3_* beside them. Only columns with the same tag are dropped before writing."
+    },
+    {
+      q: "Why must --tufs-gloss not be used when the output is evaluated?",
+      options: [
+        {t:"The ~850 WLSP records with a TUFS gloss are exactly the dev-set records, so the gold rows get an English hint the other candidates lack", ok:true},
+        {t:"The TUFS glosses are in Malay and Burmese, which the model cannot embed", ok:false},
+        {t:"It appends the gloss to the synset side, so every candidate of a sense gets the same text", ok:false},
+        {t:"It makes the cache keys collide with the plain-text run", ok:false},
+      ],
+      why:"read_tufs_glosses() keys the glosses by WLSP record ID, and TUFS concept IDs are WLSP record IDs: those records are the dev set. The gloss is appended to the sub and ctx texts of those records only, so dev gold rows look different from everything else. The script warns (dev evaluation will leak) but does not refuse."
+    },
+    {
+      q: "47,235 WLSP senses get three texts each, yet the cache holds only 94,513 passage entries. Why?",
+      options: [
+        {t:"The cache is keyed by text, and the cat text is shared by every record in a 分類項目: only 889 distinct cat strings exist", ok:true},
+        {t:"ctx texts longer than 256 tokens are skipped and never cached", ok:false},
+        {t:"Only records that appear with a dev-set synset are embedded", ok:false},
+        {t:"The cache stores sub and ctx but recomputes cat on every run", ok:false},
+      ],
+      why:"encode() builds todo = sorted({k for k in keyed if k not in self.cache}), a set, so duplicate texts are embedded once. cat has 889 distinct strings, sub 46,684 and ctx 46,940; 889 + 46,684 + 46,940 = 94,513. Long texts are truncated by max_seq_length, not skipped."
+    },
+    {
+      q: "You run the script with --max-texts 500. What happens to the rows of the other 32,659 synsets?",
+      options: [
+        {t:"They get null in the three new columns; the table is still rewritten with the columns present", ok:true},
+        {t:"They are dropped from candidates.parquet until a full run restores them", ok:false},
+        {t:"They keep the values from the previous run of the same model", ok:false},
+        {t:"The script refuses to write a partial table and only prints the cosines", ok:false},
+      ],
+      why:"add_features() fills vals with NaN, computes dot products only where ok (both indices found), and fill_nan(None) turns the rest into nulls. Existing sent_<tag>_ columns are dropped first (line 287), so earlier values for that tag are not kept."
+    },
+    {
+      q: "The e5 run used --query-prefix 'query: ' and --doc-prefix 'passage: '. How does the cache keep those apart from a later run without prefixes?",
+      options: [
+        {t:"The prefix is prepended before the cache lookup, so the key itself contains it and a different prefix is a different entry", ok:true},
+        {t:"The prefix is stored in a separate metadata array in cache.npz", ok:false},
+        {t:"It does not: the cache would serve the old vectors and the run must use a new --emb-dir", ok:false},
+        {t:"The prefix is stripped before encoding, so prefixes never affect the vectors", ok:false},
+      ],
+      why:"encode() does keyed = [prefix + t for t in texts] and looks up those strings. The saved keys literally begin with 'query: ' or 'passage: ', so a prefix-free run would find none of them and embed afresh. The prefix does reach the model: e5 models are trained with it."
+    },
+  ];
+
+  function shuffle(a){
+    for(let i=a.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  const root = document.getElementById('quizRoot');
+  QUESTIONS.forEach((item, qi)=>{
+    const q = document.createElement('div'); q.className='q';
+    const h = document.createElement('p'); h.className='qhead';
+    h.innerHTML = '<span>Q'+(qi+1)+'</span>'+item.q;
+    q.appendChild(h);
+    const ul = document.createElement('ul');
+    shuffle(item.options.slice()).forEach(opt=>{
+      const li=document.createElement('li');
+      const b=document.createElement('button');
+      b.className='opt'; b.type='button'; b.textContent=opt.t;
+      b.addEventListener('click',()=>{
+        if(q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        b.classList.add(opt.ok?'correct':'wrong');
+        ul.querySelectorAll('button').forEach(x=>{
+          x.disabled=true;
+          if(x.textContent===item.options.find(o=>o.ok).t) x.classList.add('correct');
+        });
+      });
+      li.appendChild(b); ul.appendChild(li);
+    });
+    q.appendChild(ul);
+    const why=document.createElement('p'); why.className='why';
+    why.innerHTML='<strong>Why:</strong> '+item.why;
+    q.appendChild(why);
+    root.appendChild(q);
+  });
+})();
+</script>

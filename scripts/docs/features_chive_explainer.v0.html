@@ -1,0 +1,768 @@
+<title>chiVe Features Explainer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one reading column, 46rem, serif body; data tables and code may scroll sideways. */
+  :root{
+    --ground:#f7f6f9; --surface:#ffffff; --ink:#1d1a26; --muted:#5d5870;
+    --accent:#5b3fa0; --accent-soft:#ece7f6; --hair:#e3dfe9;
+    --good:#2f7d4f; --warn:#a9711a; --bad:#b0453f; --dim:#7a7a8c;
+    --code-bg:#f1eff5;
+    --serif:"Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#131118; --surface:#1b1823; --ink:#ebe8f1; --muted:#a39ebb;
+      --accent:#b4a0ea; --accent-soft:#2a2340; --hair:#2d2838;
+      --good:#5bbd82; --warn:#d7a24e; --bad:#e07a72; --dim:#8f8fa3;
+      --code-bg:#17141f; color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#131118; --surface:#1b1823; --ink:#ebe8f1; --muted:#a39ebb;
+    --accent:#b4a0ea; --accent-soft:#2a2340; --hair:#2d2838;
+    --good:#5bbd82; --warn:#d7a24e; --bad:#e07a72; --dim:#8f8fa3;
+    --code-bg:#17141f; color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--serif);line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .wrap{max-width:46rem;margin:0 auto;padding-block:3rem 5rem;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+  .eyebrow{font-family:var(--sans);font-size:.72rem;font-weight:600;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
+  h1{font-size:2.1rem;line-height:1.15;margin:0 0 .4rem;text-wrap:balance;font-weight:600}
+  .lede{font-size:1.15rem;color:var(--muted);margin:0 0 1.5rem;text-wrap:balance}
+  .meta{font-family:var(--mono);font-size:.8rem;color:var(--muted);
+    border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);
+    padding:.6rem 0;display:flex;gap:1.2rem;flex-wrap:wrap}
+
+  nav.toc{margin:2rem 0 2.5rem;font-family:var(--sans);font-size:.9rem}
+  nav.toc ol{list-style:none;counter-reset:s;padding:0;margin:0;display:grid;gap:.35rem}
+  nav.toc li{counter-increment:s}
+  nav.toc a{color:var(--ink);text-decoration:none;display:flex;gap:.6rem;
+    padding:.35rem .5rem;border-radius:6px}
+  nav.toc a::before{content:counter(s,decimal-leading-zero);color:var(--accent);
+    font-variant-numeric:tabular-nums;font-weight:600}
+  nav.toc a:hover{background:var(--accent-soft)}
+
+  section{margin:3rem 0}
+  h2{font-size:1.5rem;margin:0 0 .8rem;font-weight:600;padding-bottom:.3rem;
+    border-bottom:2px solid var(--accent-soft)}
+  h3{font-size:1.08rem;font-family:var(--sans);font-weight:600;margin:1.6rem 0 .4rem}
+  p{margin:.8rem 0}
+  a{color:var(--accent)}
+  strong{font-weight:600}
+  .ja{font-style:normal}
+  .en{color:var(--muted)}
+
+  code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);
+    padding:.1em .35em;border-radius:4px}
+  pre{font-family:var(--mono);font-size:.82rem;line-height:1.5;background:var(--code-bg);
+    border:1px solid var(--hair);border-radius:10px;padding:1rem 1.1rem;
+    overflow-x:auto;white-space:pre;margin:1rem 0;min-width:0}
+  pre code{background:none;padding:0;font-size:1em}
+  pre.data{background:var(--surface)}
+  .ref{font-family:var(--mono);font-size:.76rem;color:var(--muted);display:block;margin:-.4rem 0 .9rem}
+
+  .chip{font-family:var(--mono);font-size:.74rem;font-weight:600;padding:.12em .5em;
+    border-radius:999px;white-space:nowrap;border:1px solid currentColor}
+  .k-gold{color:var(--good)} .k-wrong{color:var(--bad)} .k-warn{color:var(--warn)} .k-dim{color:var(--dim)}
+
+  /* feature flow diagram */
+  .flow{display:flex;align-items:stretch;flex-wrap:wrap;gap:.6rem;justify-content:center;
+    margin:1.4rem 0;font-family:var(--sans);font-size:.8rem}
+  .node{background:var(--surface);border:1px solid var(--hair);border-radius:8px;
+    padding:.5rem .7rem;text-align:center;box-shadow:0 1px 0 var(--hair);min-width:0;flex:1 1 9rem}
+  .node b{display:block;color:var(--accent);font-size:.9rem}
+  .node small{color:var(--muted);font-family:var(--mono);font-size:.7rem;display:block;line-height:1.4}
+  .arrow{color:var(--muted);font-weight:700;align-self:center;text-align:center}
+  .arrow small{display:block;font-size:.66rem;font-family:var(--mono);font-weight:400;color:var(--accent)}
+  .stack{display:flex;flex-direction:column;gap:.5rem;flex:1 1 9rem;min-width:0}
+
+  table.toy{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.86rem;font-family:var(--sans)}
+  table.toy th,table.toy td{text-align:left;padding:.45rem .55rem;border-bottom:1px solid var(--hair);vertical-align:top}
+  table.toy th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  table.toy td.num,table.toy th.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  table.toy tr.gold td{background:color-mix(in srgb,var(--good) 9%,transparent)}
+  table.toy tr.wrong td{background:color-mix(in srgb,var(--bad) 7%,transparent)}
+  .wrap-x{overflow-x:auto;min-width:0}
+
+  .callout{background:var(--accent-soft);border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .callout p{margin:.3rem 0}
+
+  .caveat{font-family:var(--sans);font-size:.86rem;line-height:1.45;color:var(--ink);
+    background:color-mix(in srgb,var(--warn) 12%,transparent);
+    border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);
+    border-radius:8px;padding:.7rem .9rem;margin:1.2rem 0}
+  .caveat b{color:var(--warn)}
+
+  /* quiz */
+  .quiz .q{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:1.1rem 1.2rem;margin:1rem 0}
+  .quiz .qhead{font-weight:600;margin:0 0 .7rem;font-family:var(--sans);font-size:1rem}
+  .quiz .qhead span{color:var(--accent);font-family:var(--mono);margin-right:.5rem}
+  .quiz ul{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
+  .quiz button.opt{width:100%;text-align:left;font:inherit;font-family:var(--sans);font-size:.92rem;
+    background:var(--ground);color:var(--ink);cursor:pointer;border:1px solid var(--hair);
+    border-radius:8px;padding:.6rem .8rem;transition:border-color .15s,background .15s}
+  .quiz button.opt:hover{border-color:var(--accent)}
+  .quiz button.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .quiz button.opt.correct{border-color:var(--good);background:color-mix(in srgb,var(--good) 14%,transparent)}
+  .quiz button.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+  .quiz button.opt[disabled]{cursor:default}
+  .quiz .why{font-size:.88rem;color:var(--muted);margin:.7rem 0 0;padding-left:.6rem;border-left:2px solid var(--hair);display:none}
+  .quiz .q.answered .why{display:block}
+
+  footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--hair);font-family:var(--sans);font-size:.82rem;color:var(--muted)}
+  .prov{font-family:var(--mono);font-size:.75rem;line-height:1.55;margin-top:.7rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">wnja-bunrigoihyou · tier 1 · Code explainer</p>
+    <h1>Word vectors as evidence for a sense link</h1>
+    <p class="lede">How <code>features_chive.py</code> turns chiVe word embeddings into
+      eight similarity columns that say whether a Japanese WordNet sense belongs
+      next to a 分類語彙表 record.</p>
+    <div class="meta">
+      <span>scripts/features_chive.py</span><span>306 lines</span>
+      <span>deps: numpy, polars, wn, gensim, sudachipy, wlsp.py</span>
+      <span>run: uv run scripts/features_chive.py</span>
+    </div>
+    <p class="caveat"><b>Generated by an AI.</b> This page was written from the code and
+      can be wrong: a misread line, an invented detail, a stale number. Trust the code,
+      not this page. Check anything that matters against
+      <code>scripts/features_chive.py</code>, and run it. The numbers here were read
+      from <code>build/candidates.parquet</code> and from chiVe 1.3 mc30 on 2026-11-05,
+      with the snippets shown in each section; a rebuilt table will differ. See
+      <a href="#trust">How much to trust this</a>.</p>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#background">Background: the two resources and the vectors</a></li>
+      <li><a href="#intuition">Intuition: one word, two records, by hand</a></li>
+      <li><a href="#code">Code: how the script runs</a></li>
+      <li><a href="#quiz">Quiz: check yourself</a></li>
+      <li><a href="#trust">How much to trust this</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <p>The project links two inventories of Japanese word meanings. The
+      <strong>Japanese WordNet</strong> (wnja 2.1) groups words into
+      <em>synsets</em>, sets of synonyms with one definition. The
+      <strong>分類語彙表</strong> (WLSP, <em>Word List by Semantic Principles</em>)
+      is a thesaurus: every headword occurrence is a record filed at a position in
+      a hierarchy. The same written word can be a member of several synsets and
+      can have several WLSP records, so the question is which pairs of
+      (wnja sense, WLSP record) mean the same thing.</p>
+
+    <h3>A wnja sense and its synset</h3>
+    <p>The word <span class="ja">多分</span> "probably" is sense
+      <code>wnja-00154449-r-1920</code> of synset <code>wnja-00154449-r</code>,
+      whose Japanese members are <span class="ja">恐らく, 多分, うわさによれば,
+      想定されているところでは, 称されるところによれば</span> and whose definition
+      is <span class="ja">そうであると信じられている、または評判である</span>
+      ("believed or reputed to be so"). The other four members are the
+      <em>synset context</em> this script uses: four extra words that pin down
+      which 多分 is meant.</p>
+
+    <h3>A WLSP record and its neighbours</h3>
+    <p>WLSP lists 多分 twice. Each record has a position code
+      <code>分類番号-段落-小段落-語番号</code> (<code>wlsp.py:67</code>), and the
+      script reads three nested groups off it (<code>wlsp.py:82–98</code>):</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>見出し番号</th><th>Code</th><th>Labels 類/部門/中項目/分類項目</th>
+        <th>小段落 neighbours (close synonyms)</th><th>段落</th><th>分類項目</th></tr></thead>
+      <tbody>
+        <tr><td class="num">95548</td><td class="num">4.3100-05-01-02</td>
+          <td><span class="ja">他//判断/判断</span></td>
+          <td><span class="ja">どうやら, 恐らく, 大方, 確か, 大概</span></td>
+          <td>16 senses: + <span class="ja">まあ, 結構, まあまあ …</span></td>
+          <td>74 senses</td></tr>
+        <tr><td class="num">12382</td><td class="num">1.1910-05-02-06</td>
+          <td><span class="ja">体/関係/量/多少</span></td>
+          <td><span class="ja">多量, 大量, 膨大, 万斛, 無尽蔵</span></td>
+          <td>12 senses: + <span class="ja">千万, 豊かさ, 巨万 …</span></td>
+          <td>128 senses</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Record 95548 is 多分 the adverb "probably", among other hedges; record 12382
+      is 多分 the noun "a large amount", among words for quantity. For the sense
+      above, the dev set says 95548 is right. The three group levels are read
+      directly from the code: <code>1.1910</code> is the 分類項目, <code>-05</code>
+      the 段落 within it, <code>-02</code> the 小段落 within that. Across the whole
+      database there are 96,051 senses (見出し番号) in 32,195 小段落, 9,909 段落 and
+      895 分類項目.</p>
+
+    <h3>The candidate table</h3>
+    <p><code>candidates.py</code> has already paired each wnja sense with every WLSP
+      record whose written form matches: 168,540 pairs in
+      <code>build/candidates.parquet</code>. For 多分 there are two rows, one per
+      record; the script adds nine columns to each.</p>
+
+    <h3>chiVe: words as 300 numbers</h3>
+    <p><a href="https://github.com/WorksApplications/chiVe">chiVe</a> (Works
+      Applications, Apache 2.0) is a word2vec model trained on Japanese web text that
+      was tokenised and normalised with Sudachi. The <code>chive-1.3-mc30</code>
+      release keeps every word seen at least 30 times: 759,011 words, each a vector
+      of 300 floats (<code>kv.vector_size</code>). Words used in similar contexts get
+      similar vectors, and <strong>cosine similarity</strong> (the dot product of two
+      unit vectors, 1 for identical, near 0 for unrelated) measures that. The nearest
+      neighbours of our two example words:</p>
+    <pre class="data">&gt;&gt;&gt; kv.most_similar("多分", topn=8)
+まあ 0.844   けれど 0.836   な 0.808   みたい 0.801
+てる 0.798   恐らく 0.797   全然 0.758   ううん 0.758
+&gt;&gt;&gt; kv.most_similar("寝る", topn=8)
+ぐっすり 0.779   寝付く 0.768   熟睡 0.764   就寝 0.761
+爆睡 0.751   眠る 0.735   寝 0.721   寝起き 0.720</pre>
+    <p>The 寝る list is what one hopes for: sleep words. The 多分 list shows the
+      limits: <span class="ja">恐らく</span> "probably" is there at 0.797, but so are
+      <span class="ja">まあ, けれど, な, てる</span>, conversational particles that
+      merely co-occur with hedges in web text. Word vectors capture
+      <em>distribution</em>, not meaning, and the features inherit that.</p>
+
+    <h3>Out of vocabulary: the Sudachi fallback</h3>
+    <p>Many wnja lemmas are not chiVe words. Of the 40,753 distinct lemmas in the
+      candidate table, 29,170 are in the vocabulary directly, 10,407 are not but can
+      be tokenised by Sudachi (<code>SplitMode.C</code>, the longest units) into
+      pieces that are, and 1,176 yield nothing. Three real cases:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Lemma</th><th>Sudachi tokens (normalised)</th><th>What the averaged vector is near</th></tr></thead>
+      <tbody>
+        <tr><td><span class="ja">選りだす</span></td><td><span class="ja">選る · 出す</span></td>
+          <td><span class="ja">選る</span> 0.842, <span class="ja">出す</span> 0.725, <span class="ja">もる</span> 0.566: usable</td></tr>
+        <tr><td><span class="ja">さすが</span></td><td><span class="ja">流石</span></td>
+          <td>one token; Sudachi's normalised form is the kanji spelling chiVe knows</td></tr>
+        <tr><td><span class="ja">うわさによれば</span></td><td><span class="ja">噂 · に · よる · ば</span></td>
+          <td><span class="ja">が</span> 0.829, <span class="ja">は</span> 0.807, <span class="ja">に</span> 0.801: the particles swamp 噂</td></tr>
+        <tr><td><span class="ja">追考, 嗔恚, 蕭索, ハイスン</span></td><td>one token each, not in chiVe</td>
+          <td>no vector; <code>chive_has</code> = 0</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>So the fallback rescues spelling variants (<span class="ja">交ざる → 混ざる,
+      ズレ → ずれ</span>) and compounds, and produces a noisy vector for a phrase.
+      The same lookup serves WLSP headwords: 93,166 of the 96,051 senses get a vector.</p>
+    <pre class="data snippet"># how the tables above were read (chiVe loads in about 5 s, 0.9 GB)
+from gensim.models import KeyedVectors
+from sudachipy import Dictionary, SplitMode
+kv = KeyedVectors.load("build/chive/chive-1.3-mc30_gensim/chive-1.3-mc30.kv")
+tok = Dictionary(dict="core").create()
+kv.most_similar("多分", topn=8)
+[m.normalized_form() for m in tok.tokenize("うわさによれば", SplitMode.C)]</pre>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <p>A WLSP record is defined by the company it keeps. If 多分 belongs at record
+      95548, then its vector should sit close to the vectors of
+      <span class="ja">どうやら, 恐らく, 確か</span>; if it belongs at 12382, close
+      to <span class="ja">多量, 大量, 膨大</span>. The script measures both and
+      leaves the comparison to the scorer. It does this twice: once with the word's
+      own vector, once with the centroid of the <em>other</em> synset members, so
+      that a sense with a clear synset gets evidence even when the word itself is
+      ambiguous.</p>
+
+    <div class="wrap-x">
+      <div class="flow">
+        <div class="stack">
+          <div class="node"><b>wnja word</b><small>多分 → unit vector</small></div>
+          <div class="node"><b>other synset members</b><small>恐らく, うわさによれば, … → centroid</small></div>
+        </div>
+        <div class="arrow">→<small>cosine</small></div>
+        <div class="stack">
+          <div class="node"><b>小段落 neighbours</b><small>matrix of 5 vectors, centroid</small></div>
+          <div class="node"><b>段落 neighbours</b><small>15 vectors, centroid</small></div>
+          <div class="node"><b>分類項目</b><small>centroid of 74</small></div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node"><b>8 features + chive_has</b><small>sub_max sub_mean<br>para_max para_mean<br>syn_sub_max syn_sub<br>syn_para syn_item</small></div>
+      </div>
+    </div>
+
+    <h3>多分 against each 小段落, neighbour by neighbour</h3>
+    <p>The cosines between the vector of 多分 and each neighbour, as the script
+      computes them (<code>sub @ word_vec</code>, <code>features_chive.py:206</code>):</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Record</th><th>Neighbour</th><th class="num">cos(多分, ·)</th><th>Neighbour</th><th class="num">cos</th></tr></thead>
+      <tbody>
+        <tr class="gold"><td rowspan="3">95548 判断 <span class="chip k-gold">gold</span></td>
+          <td><span class="ja">恐らく</span></td><td class="num">0.797</td><td><span class="ja">確か</span></td><td class="num">0.712</td></tr>
+        <tr class="gold"><td><span class="ja">どうやら</span></td><td class="num">0.696</td><td><span class="ja">大概</span></td><td class="num">0.604</td></tr>
+        <tr class="gold"><td><span class="ja">大方</span></td><td class="num">0.393</td><td colspan="2">max 0.797, mean 0.640</td></tr>
+        <tr class="wrong"><td rowspan="3">12382 多少 <span class="chip k-wrong">wrong</span></td>
+          <td><span class="ja">無尽蔵</span></td><td class="num">0.239</td><td><span class="ja">膨大</span></td><td class="num">0.228</td></tr>
+        <tr class="wrong"><td><span class="ja">大量</span></td><td class="num">0.218</td><td><span class="ja">多量</span></td><td class="num">0.118</td></tr>
+        <tr class="wrong"><td><span class="ja">万斛</span></td><td class="num">0.070</td><td colspan="2">max 0.239, mean 0.175</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Every hedge scores above every quantity word. The max and the mean of each
+      column become <code>chive_sub_max</code> and <code>chive_sub_mean</code>. The
+      same is done over the 段落 (15 and 11 neighbours with vectors), where
+      <span class="ja">まあ</span> at 0.844 lifts the gold record's
+      <code>chive_para_max</code> above its 小段落 max.</p>
+
+    <h3>The eight features for both rows</h3>
+    <p>Read straight from <code>build/candidates.parquet</code>; the probe script
+      recomputed them with <code>pair_features</code> and got the same values to
+      four decimals.</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Feature</th><th>Compares</th><th class="num">95548 判断 (gold)</th><th class="num">12382 多少</th></tr></thead>
+      <tbody>
+        <tr><td><code>chive_sub_max</code></td><td>word vs best 小段落 neighbour</td><td class="num">0.797</td><td class="num">0.239</td></tr>
+        <tr><td><code>chive_sub_mean</code></td><td>word vs mean of 小段落 neighbours</td><td class="num">0.640</td><td class="num">0.175</td></tr>
+        <tr><td><code>chive_para_max</code></td><td>word vs best 段落 neighbour</td><td class="num">0.844</td><td class="num">0.239</td></tr>
+        <tr><td><code>chive_para_mean</code></td><td>word vs mean of 段落 neighbours</td><td class="num">0.556</td><td class="num">0.164</td></tr>
+        <tr><td><code>chive_syn_sub_max</code></td><td>best (synset member, 小段落 neighbour) pair</td><td class="num">1.000</td><td class="num">0.400</td></tr>
+        <tr><td><code>chive_syn_sub</code></td><td>synset centroid vs 小段落 centroid</td><td class="num">0.788</td><td class="num">0.575</td></tr>
+        <tr><td><code>chive_syn_para</code></td><td>synset centroid vs 段落 centroid</td><td class="num">0.802</td><td class="num">0.559</td></tr>
+        <tr><td><code>chive_syn_item</code></td><td>synset centroid vs 分類項目 centroid</td><td class="num">0.892</td><td class="num">0.615</td></tr>
+        <tr><td><code>chive_has</code></td><td>word has a vector</td><td class="num">1</td><td class="num">1</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Two things to notice. <code>chive_syn_sub_max</code> is exactly 1.0 for the
+      gold row because <span class="ja">恐らく</span> is both a member of the synset
+      and a headword in the 小段落: the same chiVe vector on both sides. That happens
+      often: 242 of the 477 gold dev rows with this feature have it at 1.0, so the
+      feature partly restates the structural overlap counts that
+      <code>candidates.py</code> already computes. And the <code>syn_*</code>
+      cosines separate the rows less sharply (0.79 vs 0.57) than the word's own
+      (0.80 vs 0.24): the centroid of 恐らく and three particle-heavy phrases is a
+      blurrier probe than 多分 itself.</p>
+
+    <h3>When the vectors point the wrong way</h3>
+    <p>Cosines measure topical closeness, and WLSP sometimes files the same word
+      under a finer distinction than that. <span class="ja">寝る</span> in synset
+      <code>wnja-00017865-v</code> (<span class="ja">寝る, 就寝, 就床, 床に就く</span>:
+      <span class="ja">睡眠の準備を整える</span>, "go to bed") has three WLSP records:</p>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Record</th><th>小段落 neighbours</th><th class="num">sub_max</th><th class="num">para_max</th><th class="num">syn_sub</th></tr></thead>
+      <tbody>
+        <tr class="gold"><td>78877 <span class="ja">生活/立ち居</span> <span class="chip k-gold">gold</span></td>
+          <td><span class="ja">寝かす・寝かせる</span> 0.574, <span class="ja">休む</span> 0.453</td>
+          <td class="num">0.574</td><td class="num">0.664</td><td class="num">0.624</td></tr>
+        <tr class="wrong"><td>72266 <span class="ja">心/睡眠など</span></td>
+          <td><span class="ja">就寝する</span> 0.720, <span class="ja">寝かす・寝かせる</span> 0.574</td>
+          <td class="num">0.720</td><td class="num">0.883</td><td class="num">0.753</td></tr>
+        <tr class="wrong"><td>77887 <span class="ja">生活/生活・起臥</span></td>
+          <td><span class="ja">寝かす・寝かせる</span> 0.574, <span class="ja">寝かし付ける</span> 0.592</td>
+          <td class="num">0.592</td><td class="num">0.641</td><td class="num">0.669</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Every chiVe feature prefers the <span class="ja">睡眠</span> record (its 段落
+      holds <span class="ja">寝過ぎる</span> 0.883, <span class="ja">寝忘れる</span>
+      0.860), while the dev set, via TUFS, points at the posture record
+      <span class="ja">立ち居</span> "lying down". Whether the gold is the better
+      reading is a separate question; the point is that these columns are evidence
+      for a scorer, not a decision. In <code>score.py</code> they join the structural
+      overlaps, and on the dev set top-1 strict accuracy went from 0.696 to 0.733
+      when they were added (README).</p>
+
+    <h3>Coverage</h3>
+    <p>Of the 168,540 rows, 165,241 have <code>chive_has</code> = 1 and 3,299 have
+      0 (1,176 distinct lemmas, such as <span class="ja">艨艟, 鈍物, 聞きすごす</span>).
+      The other columns are null more often: <code>chive_sub_max</code> is null in
+      11,957 rows (no vector for the word, or no other 小段落 headword with one),
+      <code>chive_para_max</code> in 4,056, and the <code>chive_syn_*</code> columns
+      in about 25,800 rows, where the synset has no other member with a vector.</p>
+    <pre class="data snippet">import polars as pl
+df = pl.read_parquet("build/candidates.parquet")
+df.select("chive_has").to_series().value_counts()
+df.filter(pl.col("lemma") == "多分").select(
+    "sense_id", "midashi_no", "code", "gold_rel",
+    pl.col("^chive_.*$"))
+df.select([pl.col(c).null_count() for c in df.columns if c.startswith("chive_")])</pre>
+  </section>
+
+  <section id="code">
+    <h2>Code</h2>
+    <p>Seven parts, in the order they run. Line numbers refer to
+      <code>scripts/features_chive.py</code> at commit <code>b3e6896</code>.</p>
+
+    <h3>1 · The feature list</h3>
+    <span class="ref">features_chive.py:47–56</span>
+    <p>Eight column names in one tuple. Everything downstream iterates over it, and
+      <code>chive_has</code> is handled separately because it is an integer flag,
+      not a cosine.</p>
+    <pre><code>FEATURES = (
+    "chive_sub_max",
+    "chive_sub_mean",
+    "chive_para_max",
+    "chive_para_mean",
+    "chive_syn_sub_max",
+    "chive_syn_sub",
+    "chive_syn_para",
+    "chive_syn_item",
+)</code></pre>
+
+    <h3>2 · One vector per word, with the fallback</h3>
+    <span class="ref">features_chive.py:59–102</span>
+    <p><code>Vectors.get</code> is the only place a string becomes numbers. It
+      checks a cache first, then the vocabulary, then asks Sudachi to split the word
+      and averages the pieces it knows. Every vector is scaled to unit length by
+      <code>_unit</code> (lines 74–76), which is what lets a later dot product be a
+      cosine. Three counters record which path each distinct word took.</p>
+    <pre><code>if word in self.kv:
+    vec = self._unit(self.kv[word])
+    self.n_direct += 1
+elif self.tokenizer is not None:
+    toks = [m.normalized_form() for m in self.tokenizer.tokenize(word, SplitMode.C)]
+    parts = [self.kv[t] for t in toks if t in self.kv]
+    if parts:
+        vec = self._unit(np.mean(parts, axis=0))
+        self.n_split += 1
+if vec is None:
+    self.n_missing += 1
+self.cache[word] = vec</code></pre>
+    <p>Three words through it: <span class="ja">多分</span> is in <code>kv</code>, so
+      <code>n_direct</code> ticks. <span class="ja">選りだす</span> is not; Sudachi
+      returns <span class="ja">選る, 出す</span>, both known, so their raw vectors are
+      averaged, normalised, and <code>n_split</code> ticks. <span class="ja">追考</span>
+      is not in <code>kv</code> and Sudachi returns it unsplit, so <code>parts</code>
+      is empty, <code>None</code> is cached and <code>n_missing</code> ticks. Note
+      the mean is taken over raw vectors, not unit ones, so a frequent token with a
+      long vector weighs more. With <code>--no-sudachi</code> the tokenizer is
+      <code>None</code> and the <code>elif</code> never runs.</p>
+
+    <h3>3 · Centroids and matrices</h3>
+    <span class="ref">features_chive.py:105–130</span>
+    <p>Two helpers over lists of unit vectors. <code>centroid</code> averages and
+      renormalises (or returns <code>None</code> for an empty list);
+      <code>stack</code> turns the list into a 2-d array so a whole neighbour set can
+      be dotted with one vector in a single <code>@</code>.</p>
+    <pre><code>def centroid(vecs: list[np.ndarray]) -> np.ndarray | None:
+    if not vecs:
+        return None
+    m = np.mean(vecs, axis=0)
+    n = np.linalg.norm(m)
+    return m / n if n else m
+
+def stack(vecs: list[np.ndarray]) -> np.ndarray | None:
+    return np.vstack(vecs) if vecs else None</code></pre>
+
+    <h3>4 · Vectors for every WLSP group</h3>
+    <span class="ref">features_chive.py:133–181</span>
+    <p><code>GroupVectors</code> is built once. For each of the 96,051 WLSP senses it
+      looks up the headword (<code>rec.lemma</code>, <code>wlsp.py:72</code>) and, if
+      that has no vector, each of the sense's folded written forms
+      (<code>db.forms</code>) until one hits. Then for each level it keeps, per group
+      key, the member senses that have a vector and the centroid of their vectors.
+      The group keys come from <code>wlsp.py</code>: the 小段落 key is the
+      (分類番号, 段落, 小段落) triple (<code>wlsp.py:97</code>).</p>
+    <pre><code>for level in ("subpara", "para", "item"):
+    members = defaultdict(list)
+    for key, mids in db.groups[level].items():
+        members[key] = [m for m in mids if self.sense_vec[m] is not None]
+    self.members[level] = dict(members)
+    self.centroids[level] = {
+        key: centroid([self.sense_vec[m] for m in mids]) for key, mids in members.items()
+    }</code></pre>
+    <p>Two accessors read it back. <code>neighbour_matrix(mid, level)</code> (lines
+      164–176) stacks the vectors of the <em>other</em> senses in <code>mid</code>'s
+      group, excluding <code>mid</code> itself: for record 95548 at
+      <code>"subpara"</code> that is a 5 × 300 matrix for
+      <span class="ja">どうやら, 恐らく, 大方, 確か, 大概</span>.
+      <code>group_centroid(mid, level)</code> (lines 178–181) returns the group's
+      centroid, which <em>does</em> include <code>mid</code>'s own vector: the 分類項目
+      centroid for 95548 averages all 74 senses of <span class="ja">判断</span>,
+      多分 among them.</p>
+
+    <h3>5 · The eight numbers for one pair</h3>
+    <span class="ref">features_chive.py:184–223</span>
+    <p><code>pair_features</code> starts from a dict of eight <code>None</code>s and
+      fills what it can. The word half needs <code>word_vec</code> and a non-empty
+      neighbour matrix; the synset half needs at least one other member with a
+      vector. Either half can be missing independently, which is why the columns
+      have different null counts.</p>
+    <pre><code>sub = groups.neighbour_matrix(mid, "subpara")
+para = groups.neighbour_matrix(mid, "para")
+if word_vec is not None:
+    if sub is not None:
+        sims = sub @ word_vec
+        out["chive_sub_max"], out["chive_sub_mean"] = float(sims.max()), float(sims.mean())
+    if para is not None:
+        sims = para @ word_vec
+        out["chive_para_max"], out["chive_para_mean"] = float(sims.max()), float(sims.mean())
+syn = centroid(syn_vecs)
+if syn is not None:
+    if sub is not None:
+        out["chive_syn_sub_max"] = float((sub @ np.vstack(syn_vecs).T).max())
+    for level, name in (
+        ("subpara", "chive_syn_sub"),
+        ("para", "chive_syn_para"),
+        ("item", "chive_syn_item"),
+    ):
+        c = groups.group_centroid(mid, level)
+        if c is not None:
+            out[name] = float(c @ syn)</code></pre>
+    <p>For 多分 and 95548: <code>sub @ word_vec</code> is the five cosines in the
+      Intuition table, so <code>sims.max()</code> = 0.797 and <code>sims.mean()</code>
+      = 0.640. <code>sub @ np.vstack(syn_vecs).T</code> is a 5 × 4 matrix of every
+      (neighbour, synset member) cosine; its maximum is the 恐らく–恐らく cell, 1.0.
+      The last loop dots the synset centroid with the three group centroids:
+      0.788, 0.802, 0.892.</p>
+
+    <h3>6 · Every row of the table</h3>
+    <span class="ref">features_chive.py:226–275</span>
+    <p><code>add_features</code> builds the group vectors, logs how many WLSP senses
+      got one, then walks every wnja synset once and keeps, per synset, a dict from
+      lemma to vector (lines 246–253). That walk is where the direct/split/missing
+      counters fill up. The main loop pulls three columns from the table and, for
+      each row, drops the row's own lemma from its synset dict before calling
+      <code>pair_features</code>:</p>
+    <pre><code>for lemma, synset_id, mid in df.select("lemma", "synset_id", "midashi_no").iter_rows():
+    word_vec = vectors.get(lemma)
+    others = [v for k, v in synset_vecs[synset_id].items() if k != lemma]
+    row = pair_features(word_vec, others, mid, groups)
+    for f in FEATURES:
+        feats[f].append(row[f])
+    has.append(int(word_vec is not None))</code></pre>
+    <p>Then any existing <code>chive_</code> columns are dropped and the new ones
+      appended as <code>Float32</code> plus <code>chive_has</code> as
+      <code>Int8</code> (lines 271–275), so the script can be re-run on a table that
+      already carries an older set. The log lines that the two
+      <code>logger.info</code> calls produce, with the counts the probe recomputed on
+      2026-11-05 (the wnja counts are per distinct lemma, because the cache makes the
+      second lookup of a word free):</p>
+    <pre class="data">INFO WLSP vectors: 93166 senses with a vector of 96051 (4s)
+INFO wnja vectors: direct 41589, split 37815, missing 3981 (34s)
+INFO features for 168540 pairs (…s)</pre>
+    <p>So nearly half of wnja's 83,385 distinct lemmas (over 67,509 synsets) reach
+      chiVe only through the Sudachi fallback: wnja is full of multiword
+      expressions and rare spellings.</p>
+
+    <h3>7 · Entry point</h3>
+    <span class="ref">features_chive.py:278–302</span>
+    <p><code>main</code> parses five paths and flags, loads the KeyedVectors (about
+      0.9 GB on disk, a few seconds), creates the Sudachi <code>core</code>
+      tokenizer unless <code>--no-sudachi</code>, opens the project-local
+      <code>wn</code> database and the WLSP file, and writes the parquet back
+      <strong>in place</strong>, over the input path.</p>
+    <pre><code>kv = KeyedVectors.load(str(args.kv))
+tokenizer = None if args.no_sudachi else Dictionary(dict="core").create()
+vectors = Vectors(kv, tokenizer)
+wn.config.data_directory = args.wn_data.resolve()
+ja = wn.Wordnet(lexicon=args.lexicon)
+db = Wlsp.load(args.wlsp)
+
+df = add_features(pl.read_parquet(args.candidates), ja, db, vectors)
+df.write_parquet(args.candidates)</code></pre>
+    <p>Because the output overwrites the input, running the script twice is harmless
+      (the drop on line 271 removes the first set) but an interrupted write would
+      damage the shared table; keep a copy if the machine is unreliable.</p>
+  </section>
+
+  <section id="quiz" class="quiz">
+    <h2>Quiz</h2>
+    <p>Six questions on the substance. Pick one per question; the reason appears
+      either way.</p>
+    <div id="quizRoot"></div>
+  </section>
+
+  <section id="trust">
+    <h2>How much to trust this</h2>
+    <p>This page was written by an AI from the source file. That makes it fast to
+      produce and easy to refine, and fallible. A model can misread a line, invent a
+      plausible detail, or keep a number that has since changed.</p>
+    <p>Treat the code as the source of truth and this page as a guide to it:</p>
+    <ul>
+      <li>Every code claim carries a <code>file:line</code> reference into
+        <code>scripts/features_chive.py</code> or <code>scripts/wlsp.py</code> at
+        commit <code>b3e6896</code>. Open it and check.</li>
+      <li>The feature values for 多分 and 寝る were read from
+        <code>build/candidates.parquet</code> on 2026-11-05 and cross-checked by
+        recomputing them with the script's own <code>pair_features</code>; they
+        agreed. A rebuilt table (new chiVe release, new WLSP version, changes to
+        <code>candidates.py</code>) will change them.</li>
+      <li>The counts (759,011 words; 93,166 of 96,051 WLSP senses; 29,170 / 10,407 /
+        1,176 lemmas; 41,589 / 37,815 / 3,981 wnja words; the null counts) come from
+        one probe run with the snippets shown, not from the script's own log, which
+        was not kept. They should match a fresh run of the script but have not been
+        checked against one.</li>
+      <li>The nearest-neighbour lists are from <code>kv.most_similar</code> on chiVe
+        1.3 mc30; the script never calls that function, it is shown only to make the
+        vectors concrete.</li>
+      <li>The surest check is to run the script on a copy of the table and compare
+        the 多分 rows with the Intuition table.</li>
+      <li>The quiz answers are derived from the code; where one disagrees with the
+        code, the code wins. Please report it.</li>
+    </ul>
+    <p>Guard the process, not just the page: generate the explainer only from the
+      real file, pin numbers to an actual run, and have a second reader, a person or
+      another model, check it against the source before it is shared.
+      <code>explainer_check.py</code> was run on this version and flagged nothing.</p>
+  </section>
+
+  <section id="glossary">
+    <h2>Glossary</h2>
+    <div class="wrap-x">
+    <table class="toy">
+      <thead><tr><th>Term</th><th>What it means here</th></tr></thead>
+      <tbody>
+        <tr><td><strong>synset</strong></td><td>a set of synonyms with one definition in
+          wnja; <span class="ja">恐らく, 多分, うわさによれば, …</span> is one. Its other
+          members are the "synset context" behind the <code>chive_syn_*</code> columns.</td></tr>
+        <tr><td><strong>見出し番号 (mid)</strong></td><td>the WLSP sense id the table is keyed
+          on (<code>midashi_no</code>); 95548 and 12382 are the two for 多分. A sense may
+          span several records (spelling and reading variants), see <code>wlsp.py:220</code>.</td></tr>
+        <tr><td><strong>小段落 / 段落 / 分類項目</strong></td><td>the three nested WLSP groups
+          the script compares against: close synonyms (5 others for 95548), a related
+          cluster (15 others), a topical category (74 senses). The 中項目 above them is
+          not used by this script.</td></tr>
+        <tr><td><strong>chiVe</strong></td><td>word2vec vectors for Sudachi-normalised
+          Japanese; release 1.3, min count 30: 759,011 words × 300 dimensions, loaded
+          as gensim <code>KeyedVectors</code>.</td></tr>
+        <tr><td><strong>unit vector / cosine</strong></td><td>a vector scaled to length 1;
+          the dot product of two unit vectors is the cosine of the angle between them,
+          1.0 for 恐らく against itself, 0.070 for 多分 against 万斛.</td></tr>
+        <tr><td><strong>centroid</strong></td><td>the mean of a set of unit vectors,
+          renormalised; <code>centroid</code> at <code>features_chive.py:105</code>.</td></tr>
+        <tr><td><strong>SplitMode.C</strong></td><td>Sudachi's longest-unit tokenisation,
+          used only for words chiVe lacks: <span class="ja">選りだす → 選る, 出す</span>.</td></tr>
+        <tr><td><strong>chive_has</strong></td><td>1 when the wnja word got a vector by
+          either route, else 0 (3,299 rows); the other eight columns are then null.</td></tr>
+        <tr><td><strong>gold / gold_rel</strong></td><td>dev-set labels in the table:
+          <code>exact</code> is the TUFS-linked record, <code>other</code> another record
+          of the same word, <code>decoy</code> a planted negative from another word.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>Explainer for the wnja-bunrigoihyou mapping project · generated from
+      <code>scripts/features_chive.py</code>. Format after
+      <a href="https://www.geoffreylitt.com/">Geoffrey Litt</a>'s
+      <a href="https://gist.github.com/geoffreylitt/a29df1b5f9865506e8952488eac3d524"><em>explain-diff</em></a>:
+      background, intuition, code, quiz.</p>
+    <p class="prov">Explainer v0, generated 2026-11-05 by Claude Fable 5.1 · source
+      <code>scripts/features_chive.py</code> (306 lines) and <code>scripts/wlsp.py</code>
+      at commit <code>b3e6896</code> · data wnja:2.1, WLSP 分類語彙表増補改訂版データベース
+      ver 1.0.1, chiVe 1.3 mc30 (gensim), <code>build/candidates.parquet</code> as of
+      2026-11-05 · regenerate when the code changes.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const QUESTIONS = [
+    {
+      q: "For the pair (多分, record 95548) the script computes chive_sub_max = 0.797. What exactly is that number?",
+      options: [
+        {t:"The largest cosine between the unit vector of 多分 and the vectors of the other headwords in the record's 小段落 (here 恐らく)", ok:true},
+        {t:"The cosine between 多分 and the centroid of its whole 小段落, including itself", ok:false},
+        {t:"The cosine between the synset centroid and the 小段落 centroid", ok:false},
+        {t:"The largest cosine between 多分 and any word in chiVe", ok:false},
+      ],
+      why:"neighbour_matrix stacks the vectors of the other senses in the group (m != mid), and sims = sub @ word_vec gives one cosine per neighbour; sims.max() is 0.797, the 恐らく row. The centroid versions are the chive_syn_* columns."
+    },
+    {
+      q: "A wnja lemma such as 選りだす is not in the chiVe vocabulary. What does Vectors.get return for it?",
+      options: [
+        {t:"The unit-normalised mean of the raw chiVe vectors of the Sudachi tokens it knows (選る and 出す)", ok:true},
+        {t:"None, and chive_has is set to 0", ok:false},
+        {t:"The vector of the longest single token only", ok:false},
+        {t:"The vector of the closest spelling in the vocabulary", ok:false},
+      ],
+      why:"The elif branch tokenises with SplitMode.C, keeps the tokens that are in kv, and averages their raw vectors (np.mean) before _unit. None is cached only when no token is known, as for 追考. 10,407 of the table's 40,753 lemmas take this path."
+    },
+    {
+      q: "chive_syn_sub_max is exactly 1.0 for 242 of the gold dev rows that have it. Why?",
+      options: [
+        {t:"Some other member of the synset is itself a headword in the record's 小段落, so the same vector is on both sides", ok:true},
+        {t:"The feature is clipped to 1.0 whenever the synset centroid is close", ok:false},
+        {t:"Gold rows are set to 1.0 by candidates.py as a label", ok:false},
+        {t:"Floating-point rounding of cosines above 0.95", ok:false},
+      ],
+      why:"sub @ np.vstack(syn_vecs).T holds every (neighbour, synset member) cosine. When a member such as 恐らく is also a 小段落 headword, that cell is the cosine of a unit vector with itself, 1.0. It is a real signal, but it largely restates the structural overlap counts."
+    },
+    {
+      q: "Which of these differences between neighbour_matrix and group_centroid is real?",
+      options: [
+        {t:"neighbour_matrix leaves out the candidate record itself; group_centroid averages the whole group, candidate included", ok:true},
+        {t:"neighbour_matrix works only on the 小段落, group_centroid only on the 分類項目", ok:false},
+        {t:"group_centroid weights members by their 語番号", ok:false},
+        {t:"neighbour_matrix includes senses without a vector as zero rows", ok:false},
+      ],
+      why:"neighbour_matrix filters m != mid before stacking; the centroids were computed in __init__ over every member with a vector, including mid. Both work at any of the three levels (chive_syn_sub_max uses the 小段落 matrix; the three syn centroids use all three levels)."
+    },
+    {
+      q: "A row has chive_has = 1 but chive_sub_max is null. What happened?",
+      options: [
+        {t:"The word has a vector but no other headword in its 小段落 does (or it is alone there), so sub is None", ok:true},
+        {t:"The synset has no other member with a vector", ok:false},
+        {t:"The word was found only through the Sudachi fallback", ok:false},
+        {t:"The record is a decoy and the feature is masked", ok:false},
+      ],
+      why:"chive_has only says word_vec is not None. The sub features additionally need neighbour_matrix(mid, 'subpara') to return a matrix, which fails when no other sense in the 小段落 has a vector. 8,658 rows are in this state. A missing synset context nulls the chive_syn_* columns instead."
+    },
+    {
+      q: "For 寝る every chiVe feature prefers the 睡眠 record 72266 over the gold 立ち居 record 78877. What does the script do about that?",
+      options: [
+        {t:"Nothing: it writes all eight cosines for every row and leaves the decision to score.py", ok:true},
+        {t:"It keeps only the record with the highest chive_sub_max per sense", ok:false},
+        {t:"It flags the disagreement in a chive_conflict column", ok:false},
+        {t:"It overrides the dev label when the cosines are clear", ok:false},
+      ],
+      why:"add_features computes pair_features for every row independently and never reads gold or compares rows of the same sense. Ranking and the use of the dev labels happen in score.py; these columns are evidence, and in this case misleading evidence."
+    },
+  ];
+
+  function shuffle(a){
+    for(let i=a.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  const root = document.getElementById('quizRoot');
+  QUESTIONS.forEach((item, qi)=>{
+    const q = document.createElement('div'); q.className='q';
+    const h = document.createElement('p'); h.className='qhead';
+    h.innerHTML = '<span>Q'+(qi+1)+'</span>'+item.q;
+    q.appendChild(h);
+    const ul = document.createElement('ul');
+    shuffle(item.options.slice()).forEach(opt=>{
+      const li=document.createElement('li');
+      const b=document.createElement('button');
+      b.className='opt'; b.type='button'; b.textContent=opt.t;
+      b.addEventListener('click',()=>{
+        if(q.classList.contains('answered')) return;
+        q.classList.add('answered');
+        b.classList.add(opt.ok?'correct':'wrong');
+        ul.querySelectorAll('button').forEach(x=>{
+          x.disabled=true;
+          if(x.textContent===item.options.find(o=>o.ok).t) x.classList.add('correct');
+        });
+      });
+      li.appendChild(b); ul.appendChild(li);
+    });
+    q.appendChild(ul);
+    const why=document.createElement('p'); why.className='why';
+    why.innerHTML='<strong>Why:</strong> '+item.why;
+    q.appendChild(why);
+    root.appendChild(q);
+  });
+})();
+</script>

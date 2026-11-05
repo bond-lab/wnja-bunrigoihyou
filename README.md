@@ -1,6 +1,7 @@
 # wnja-bunrigoihyou
 
-Mapping Japanese WordNet (wnja) senses to 分類語彙表 (Word List by Semantic
+Mapping [Japanese WordNet](https://bond-lab.github.io/wnja/) (wnja) senses to
+[分類語彙表](https://clrd.ninjal.ac.jp/goihyo.html) (Word List by Semantic
 Principles, WLSP) senses.
 
 ## Data
@@ -9,7 +10,7 @@ Cloned into `data/` (not committed; all CC BY-NC-SA 3.0, NINJAL):
 
 | Directory | Source | Contents |
 |---|---|---|
-| `data/WLSP` | <https://github.com/masayu-a/WLSP> | 分類語彙表増補改訂版データベース ver 1.0.1 (`bunruidb.txt`, Shift_JIS, 101,067 records) |
+| `data/WLSP` | <https://github.com/masayu-a/WLSP> | 分類語彙表増補改訂版データベース ver 1.0.1 (`bunruidb.txt`, Shift_JIS, 101,067 records; `kaisetsu.txt` says 101,070, but IDs 024807, 024809 and 053757 are absent from the file) |
 | `data/wlsp2unidic` | <https://github.com/masayu-a/wlsp2unidic> | WLSP number to UniDic lemma ID |
 | `data/wlsp2iwanami` | <https://github.com/masayu-a/wlsp2iwanami> | WLSP to 岩波国語辞典 senses |
 
@@ -18,18 +19,25 @@ mkdir -p data && cd data
 for r in WLSP wlsp2unidic wlsp2iwanami; do git clone --depth 1 https://github.com/masayu-a/$r; done
 ```
 
-The Japanese WordNet (`../wnja/build/wnja-2.1.xml`) and the TUFS Japanese
-wordnet (`../tufs/build/lmf/tufs-ja.xml`) are loaded into a project-local
-`wn` database in `.wn_data/` (not committed):
+The wordnets are loaded into a project-local `wn` database in `.wn_data/`
+(not committed): the Japanese WordNet (`wnja:2.1`) and the TUFS Japanese
+wordnet (`tufs-ja:2026.04.06`) from their GitHub releases, and the English
+wordnet (`omw-en:1.4`, which supplies the hypernym hierarchy through ILI)
+from the `wn` index:
 
 ```bash
 uv sync
 uv run python -c "
 import wn, pathlib
 wn.config.data_directory = pathlib.Path('.wn_data').resolve()
-wn.add('../wnja/build/wnja-2.1.xml')
-wn.add('../tufs/build/lmf/tufs-ja.xml')"
+wn.download('https://github.com/bond-lab/wnja/releases/download/v2.1/wnja-2.1.tar.xz')
+wn.download('https://github.com/omwn/tufs/releases/download/v2026.04.06/tufs-ja-2026.04.06.tar.xz')
+wn.download('omw-en:1.4')"
 ```
+
+Working from local builds instead (`../wnja/build/wnja-2.1.xml`,
+`../tufs/build/lmf/tufs-ja.xml`), replace the first two downloads with
+`wn.add(path)`.
 
 ## Dev set
 
@@ -114,12 +122,13 @@ headword more than once nearby; P/R at confidence 0.5, lenient):
 
 | features | top-1 strict | top-1 lenient | MRR lenient | P / R |
 |---|---|---|---|---|
-| hand-weighted baseline | 0.627 | 0.725 | 0.843 | |
+| hand-weighted baseline | 0.627 | 0.725 | 0.843 |  |
 | core (structural) | 0.696 | 0.741 | 0.857 | 0.81 / 0.80 |
-| core + chiVe (tier 1) | 0.733 | 0.767 | 0.871 | 0.83 / 0.86 |
+| core + chiVe (tier 1) | **0.733** | **0.767** | **0.871** | 0.83 / 0.86 |
 | + multilingual-e5-small (CPU preview of tier 2) | 0.706 | 0.754 | 0.863 | 0.83 / 0.86 |
-| + within-sense relative similarities | 0.686 | 0.761 | 0.865 | 0.87 / 0.89 |
+| + within-sense relative similarities | 0.686 | 0.761 | 0.865 | 0.87 / **0.89** |
 | + decoy negatives, trained on all dev senses | 0.683 | 0.734 | 0.852 | 0.88 / 0.85 |
+| + kana spellings as candidate headwords (current) | 0.696 | 0.748 | 0.858 | **0.89** / 0.85 |
 
 Embedding cosines sit in a narrow band (e5-small: 0.85 to 0.88), so the raw
 values were ignored by the tree model; expressed relative to the best
@@ -134,10 +143,10 @@ treated as negatives, so genuine many-to-many links are not penalised. Note
 the dev set itself has almost no wnja-sense-to-several-records links (a TUFS
 concept is one WLSP record), so that direction is unmeasured.
 
-**Lone candidates are unverified.** 60k of the 168k pairs are the only WLSP
-candidate of their wnja sense, and the dev set has no negatives of that kind
-(every dev word was linked), so the scorer cannot learn to reject a lone
-candidate: they all come out above 0.5. `candidates.py` adds two decoy
+**Lone candidates are unverified.** 59,891 of the 168,601 pairs are the only
+WLSP candidate of their wnja sense, and the dev set has no negatives of that
+kind (every dev word was linked), so the scorer cannot learn to reject a lone
+candidate: all but five come out above 0.5 (median 0.94). `candidates.py` adds two decoy
 negatives per dev sense (WLSP senses of other words in the same 類 but a
 different 分類項目, `gold_rel` = `decoy`); the scorer rejects 99.9% of them,
 which shows it recognises unrelated contexts, but a lone candidate that is
@@ -209,7 +218,21 @@ uv run pytest tests
 
 No published mapping between the Japanese WordNet and WLSP was found (search
 of ACL Anthology, 言語処理学会, NINJAL, Consensus; 2026-11-05). The closest
-work is NINJAL's WLSP alignments to UniDic (Kondo and Tanaka 2017; Katayama
-et al. 2024) and to 岩波国語辞典 senses (Wu et al. 2019), the WLSP corpus
-annotations (Kato et al. 2018; Asahara et al. 2022), and the WordNet to
-Goi-Taikei alignments (Asanoma 2001; Bond et al. 2009).
+work is NINJAL's WLSP alignments to UniDic ([Kondo and Tanaka
+2017](https://anlp.jp/proceedings/annual_meeting/2017/pdf_dir/E1-4.pdf);
+[Katayama et al.
+2024](https://www.anlp.jp/proceedings/annual_meeting/2024/pdf_dir/P1-5.pdf))
+and to 岩波国語辞典 senses ([Wu et al. 2019](https://doi.org/10.15084/00002585)),
+the WLSP corpus annotations ([Kato et al.
+2018](https://aclanthology.org/Y18-1029/); [Asahara et al.
+2022](https://aclanthology.org/2022.lt4hala-1.5/)), and the WordNet to
+Goi-Taikei alignments ([Asanoma 2001](https://aclanthology.org/volumes/W01-04/);
+[Bond et al. 2009](https://aclanthology.org/W09-3401/)).
+
+- 近藤明日子・田中牧郎 (2017) 分類語彙表・UniDic 見出し対応表の構築. 言語処理学会第23回年次大会, E1-4.
+- 片山久留美・髙橋雄太・菊池そのみ・小木曽智信 (2024) 複数短単位版「分類語彙表番号-UniDic」対応表の整備と公開. 言語処理学会第30回年次大会, P1-5.
+- 呉佩珣・近藤森音・森山奈々美・荻原亜彩美・加藤祥・浅原正幸 (2019) 『分類語彙表』と『岩波国語辞典第五版タグ付きコーパス2004』の対応表. 言語資源活用ワークショップ発表論文集, 337-342.
+- Sachi Kato et al. (2018) Annotation of 'Word List by Semantic Principles' Labels for the Balanced Corpus of Contemporary Written Japanese. PACLIC 32.
+- Masayuki Asahara et al. (2022) CHJ-WLSP: Annotation of 'Word List by Semantic Principles' Labels for the Corpus of Historical Japanese. LT4HALA 2022.
+- Naoki Asanoma (2001) Alignment of Ontologies: WordNet and Goi-Taikei. NAACL 2001 Workshop on WordNet and Other Lexical Resources, 89-94 (the Anthology lists only the volume).
+- Francis Bond et al. (2009) Enhancing the Japanese WordNet. 7th Workshop on Asian Language Resources.

@@ -107,3 +107,13 @@
 | baseline lenient | 305 | 0.725 | 0.843 | | | |
 | laptop-final lenient | 305 | 0.734 | 0.852 | 0.84/0.91/0.88 | 0.88/0.85/0.86 | 0.92/0.80/0.85 |
 | decoys rejected at 0.5 | 1188 | 0.999 | | | | |
+
+## 2026-11-05 kana-form-fix
+
+| run | ambiguous senses | top-1 | MRR | P/R/F1 @0.3 | P/R/F1 @0.5 | P/R/F1 @0.7 |
+|---|---|---|---|---|---|---|
+| baseline strict | 303 | 0.620 | 0.785 | | | |
+| kana-form-fix strict | 303 | 0.696 | 0.832 | 0.74/0.93/0.82 | 0.77/0.85/0.81 | 0.81/0.80/0.80 |
+| baseline lenient | 305 | 0.731 | 0.845 | | | |
+| kana-form-fix lenient | 305 | 0.748 | 0.858 | 0.84/0.93/0.88 | 0.89/0.85/0.87 | 0.91/0.80/0.85 |
+| decoys rejected at 0.5 | 1190 | 0.998 | | | | |
