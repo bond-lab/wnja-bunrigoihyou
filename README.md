@@ -108,6 +108,22 @@ writes `wnja-wlsp.tsv` with one row per link: wnja sense, synset, ILI, lemma,
 WLSP 見出し番号, record, code, labels, `confidence` and an `evidence` summary.
 Links are many-to-many: every pair above the threshold is kept.
 
+Dev-set results so far (303 ambiguous senses; strict = the gold record,
+lenient = any record in the gold's 小段落 or 段落, since WLSP lists the same
+headword more than once nearby; P/R at confidence 0.5, lenient):
+
+| features | top-1 strict | top-1 lenient | MRR lenient | P / R |
+|---|---|---|---|---|
+| hand-weighted baseline | 0.627 | 0.725 | 0.843 | |
+| core (structural) | 0.696 | 0.741 | 0.857 | 0.81 / 0.80 |
+| core + chiVe (tier 1) | 0.733 | 0.767 | 0.871 | 0.83 / 0.86 |
+
+Links are scored pair by pair without candidate-count priors, and dev
+candidates in the same group as the gold are left unlabelled rather than
+treated as negatives, so genuine many-to-many links are not penalised. Note
+the dev set itself has almost no wnja-sense-to-several-records links (a TUFS
+concept is one WLSP record), so that direction is unmeasured.
+
 Later tiers (GPU sentence embeddings and a Claude judge for uncertain pairs;
 岩波国語辞典 definitions through `wlsp2iwanami` where available) add further
 columns the same way.
